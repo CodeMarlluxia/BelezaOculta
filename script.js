@@ -33,6 +33,38 @@ const SHEET_NAMES = {
     sales: "VENDAS"
 };
 
+const COLUMN_MAP = {
+    appointments: {
+        id: "ID",
+        client: "NOME CLIENTE",
+        service: "SERVIÇO",
+        professional: "PROFISSIONAL",
+        value: "VALOR",
+        date: "DATA E HORA"
+    },
+    products: {
+        id: "ID",
+        name: "PRODUTO",
+        quantity: "QUANTIDADE",
+        price: "PREÇO"
+    },
+    clients: {
+        id: "ID",
+        name: "NOME",
+        phone: "TELEFONE",
+        email: "E-MAIL"
+    },
+    sales: {
+        id: "ID",
+        productName: "PRODUTO",
+        customer: "CLIENTE",
+        quantity: "QUANTIDADE",
+        unitPrice: "PREÇO UNITÁRIO",
+        total: "TOTAL",
+        date: "DATA"
+    }
+};
+
 const state = {
     appointments: [],
     products: [],
@@ -136,6 +168,25 @@ const el = {
 
 function renderLucideIcons() {
     if (window.lucide) window.lucide.createIcons();
+    ensureSpinnerStyle();
+}
+
+function ensureSpinnerStyle() {
+    let styleTag = document.getElementById("spin-loader-style");
+    if (styleTag) return;
+
+    styleTag = document.createElement("style");
+    styleTag.id = "spin-loader-style";
+    styleTag.textContent = `
+    .spin-loader {
+      animation: spinLoader .9s linear infinite;
+    }
+    @keyframes spinLoader {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+  `;
+    document.head.appendChild(styleTag);
 }
 
 function normalizeText(value) {
@@ -147,87 +198,262 @@ function toNumber(value) {
     return Number.isFinite(numeric) ? numeric : 0;
 }
 
-function jsonHeaders() {
+function toInteger(value) {
+    const numeric = Number(String(value ?? "").replace(",", "."));
+    return Number.isInteger(numeric) ? numeric : 0;
+}
+
+function buildJsonHeaders() {
     return {
         "Content-Type": "text/plain;charset=utf-8"
     };
 }
 
+function parseFlexibleDate(value) {
+    if (value == null || value === "") return null;
+
+    if (value instanceof Date && !Number.isNaN(value.getTime())) {
+        return value;
+    }
+
+    const text = String(value).trim();
+    if (!text) return null;
+
+    const direct = new Date(text);
+    if (!Number.isNaN(direct.getTime())) {
+        return direct;
+    }
+
+    const brDateTime = text.match(/^(\d{2})\/(\d{2})\/(\d{4})(?:[\s,]+(\d{2}):(\d{2})(?::(\d{2}))?)?$/);
+    if (brDateTime) {
+        const day = Number(brDateTime[1]);
+        const month = Number(brDateTime[2]) - 1;
+        const year = Number(brDateTime[3]);
+        const hour = Number(brDateTime[4] || 0);
+        const minute = Number(brDateTime[5] || 0);
+        const second = Number(brDateTime[6] || 0);
+        const parsed = new Date(year, month, day, hour, minute, second);
+        if (!Number.isNaN(parsed.getTime())) return parsed;
+    }
+
+    const isoLike = text.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T\s](\d{2}):(\d{2})(?::(\d{2}))?)?$/);
+    if (isoLike) {
+        const year = Number(isoLike[1]);
+        const month = Number(isoLike[2]) - 1;
+        const day = Number(isoLike[3]);
+        const hour = Number(isoLike[4] || 0);
+        const minute = Number(isoLike[5] || 0);
+        const second = Number(isoLike[6] || 0);
+        const parsed = new Date(year, month, day, hour, minute, second);
+        if (!Number.isNaN(parsed.getTime())) return parsed;
+    }
+
+    return null;
+}
+
+function sameCalendarDay(dateA, dateB) {
+    return (
+        dateA.getDate() === dateB.getDate() &&
+        dateA.getMonth() === dateB.getMonth() &&
+        dateA.getFullYear() === dateB.getFullYear()
+    );
+}
+
+async function parseJsonResponse(response) {
+    const text = await response.text();
+
+    try {
+        return JSON.parse(text);
+    } catch (error) {
+        console.error("Resposta não JSON:", text);
+        throw new Error("A resposta do Apps Script não está em JSON válido.");
+    }
+}
+
+function extractApiData(payload) {
+    if (Array.isArray(payload)) return payload;
+    if (payload && Array.isArray(payload.data)) return payload.data;
+    if (payload && payload.success === true && Array.isArray(payload.data)) return payload.data;
+    if (payload && payload.success === true && payload.data && typeof payload.data === "object") return payload.data;
+    if (payload && payload.success === true) return payload;
+    if (payload && payload.error) throw new Error(payload.error);
+    if (payload && payload.success === false) throw new Error(payload.message || "Erro retornado pela API.");
+    if (payload && typeof payload === "object") return payload;
+    return [];
+}
+
 async function apiGet(action) {
-    const response = await fetch(`${API_BASE_URL}?action=${encodeURIComponent(action)}`);
-    return response.json();
+    const response = await fetch(`${API_BASE_URL}?action=${encodeURIComponent(action)}`, {
+        method: "GET"
+    });
+
+    const payload = await parseJsonResponse(response);
+    return extractApiData(payload);
 }
 
 async function apiPost(action, payload = {}) {
     const response = await fetch(API_BASE_URL, {
         method: "POST",
-        headers: jsonHeaders(),
+        headers: buildJsonHeaders(),
         body: JSON.stringify({
             action,
             ...payload
         })
     });
 
-    return response.json();
+    const result = await parseJsonResponse(response);
+
+    if (result?.success === false) {
+        throw new Error(result.message || "Erro ao enviar dados.");
+    }
+
+    if (result?.error) {
+        throw new Error(result.error);
+    }
+
+    return result;
 }
 
-function getListActionBySheet(sheetName) {
+function getActionBySheet(sheetName) {
     if (sheetName === SHEET_NAMES.appointments) return "appointments";
     if (sheetName === SHEET_NAMES.products) return "products";
     if (sheetName === SHEET_NAMES.clients) return "clients";
     if (sheetName === SHEET_NAMES.sales) return "sales";
-    throw new Error("Sheet não mapeada.");
+    throw new Error("Aba não mapeada.");
 }
 
 async function listSheet(sheetName) {
-    const action = getListActionBySheet(sheetName);
-    const result = await apiGet(action);
-
-    if (result.error) {
-        throw new Error(result.error);
-    }
-
-    return result;
+    return apiGet(getActionBySheet(sheetName));
 }
 
 async function createSheetRow(sheetName, data) {
-    const result = await apiPost("create", {
+    return apiPost("create", {
         sheet: sheetName,
         data
     });
-
-    if (result.error) {
-        throw new Error(result.error);
-    }
-
-    return result;
 }
 
 async function updateSheetRow(sheetName, id, data) {
-    const result = await apiPost("update", {
+    return apiPost("update", {
         sheet: sheetName,
         id,
         data
     });
-
-    if (result.error) {
-        throw new Error(result.error);
-    }
-
-    return result;
 }
 
 async function deleteSheetRow(sheetName, id) {
-    const result = await apiPost("delete", {
+    return apiPost("delete", {
         sheet: sheetName,
         id
     });
+}
 
-    if (result.error) {
-        throw new Error(result.error);
+function setButtonProcessing(button, isProcessing, processingText) {
+    if (!button) return;
+
+    if (isProcessing) {
+        button.dataset.originalHtml = button.innerHTML;
+        button.disabled = true;
+        button.innerHTML = `<i data-lucide="loader-circle" class="spin-loader"></i> ${processingText}`;
+        renderLucideIcons();
+        return;
     }
 
-    return result;
+    button.disabled = false;
+    if (button.dataset.originalHtml) {
+        button.innerHTML = button.dataset.originalHtml;
+    }
+    renderLucideIcons();
+}
+
+async function withProcessing(button, processingText, callback) {
+    try {
+        setButtonProcessing(button, true, processingText);
+        return await callback();
+    } finally {
+        setButtonProcessing(button, false, processingText);
+    }
+}
+
+function mapAppointmentRow(item) {
+    const map = COLUMN_MAP.appointments;
+    return {
+        id: normalizeText(item[map.id]),
+        client: normalizeText(item[map.client]),
+        service: normalizeText(item[map.service]),
+        professional: normalizeText(item[map.professional]),
+        value: toNumber(item[map.value]),
+        date: normalizeText(item[map.date])
+    };
+}
+
+function mapProductRow(item) {
+    const map = COLUMN_MAP.products;
+    return {
+        id: normalizeText(item[map.id]),
+        name: normalizeText(item[map.name]),
+        quantity: toInteger(item[map.quantity]),
+        price: toNumber(item[map.price])
+    };
+}
+
+function mapClientRow(item) {
+    const map = COLUMN_MAP.clients;
+    return {
+        id: normalizeText(item[map.id]),
+        name: normalizeText(item[map.name]),
+        phone: normalizeText(item[map.phone]),
+        email: normalizeText(item[map.email])
+    };
+}
+
+function mapSaleRow(item) {
+    const map = COLUMN_MAP.sales;
+    return {
+        id: normalizeText(item[map.id]),
+        productName: normalizeText(item[map.productName]),
+        customer: normalizeText(item[map.customer]),
+        quantity: toInteger(item[map.quantity]),
+        unitPrice: toNumber(item[map.unitPrice]),
+        total: toNumber(item[map.total]),
+        date: normalizeText(item[map.date])
+    };
+}
+
+async function loadAppointments() {
+    const rows = await listSheet(SHEET_NAMES.appointments);
+    state.appointments = Array.isArray(rows) ? rows.map(mapAppointmentRow) : [];
+}
+
+async function loadProducts() {
+    const rows = await listSheet(SHEET_NAMES.products);
+    state.products = Array.isArray(rows) ? rows.map(mapProductRow) : [];
+}
+
+async function loadClients() {
+    const rows = await listSheet(SHEET_NAMES.clients);
+    state.clients = Array.isArray(rows) ? rows.map(mapClientRow) : [];
+}
+
+async function loadSales() {
+    const rows = await listSheet(SHEET_NAMES.sales);
+    state.sales = Array.isArray(rows) ? rows.map(mapSaleRow) : [];
+}
+
+async function initializeAppData() {
+    try {
+        await Promise.all([
+            loadAppointments(),
+            loadProducts(),
+            loadClients(),
+            loadSales()
+        ]);
+
+        renderAll();
+    } catch (error) {
+        console.error("Erro detalhado ao carregar dados:", error);
+        alert(`Erro ao carregar dados do Google Sheets.\n\nDetalhe: ${error.message}`);
+    }
 }
 
 function setAuth(email) {
@@ -266,8 +492,8 @@ function updateAuthView() {
 function handleLogin(event) {
     event.preventDefault();
 
-    const email = el.loginEmail.value.trim().toLowerCase();
-    const password = el.loginPassword.value.trim();
+    const email = normalizeText(el.loginEmail.value).toLowerCase();
+    const password = normalizeText(el.loginPassword.value);
 
     if (email === DEFAULT_LOGIN.email && password === DEFAULT_LOGIN.password) {
         setAuth(email);
@@ -331,8 +557,8 @@ function formatCurrency(value) {
 }
 
 function formatDateTime(dateString) {
-    const date = new Date(dateString);
-    if (Number.isNaN(date.getTime())) return normalizeText(dateString) || "Data inválida";
+    const date = parseFlexibleDate(dateString);
+    if (!date) return normalizeText(dateString) || "Data inválida";
 
     return date.toLocaleString("pt-BR", {
         dateStyle: "short",
@@ -351,16 +577,9 @@ function getInitials(name) {
 }
 
 function isToday(dateString) {
-    const date = new Date(dateString);
-    const today = new Date();
-
-    if (Number.isNaN(date.getTime())) return false;
-
-    return (
-        date.getDate() === today.getDate() &&
-        date.getMonth() === today.getMonth() &&
-        date.getFullYear() === today.getFullYear()
-    );
+    const date = parseFlexibleDate(dateString);
+    if (!date) return false;
+    return sameCalendarDay(date, new Date());
 }
 
 function openModal(modalElement) {
@@ -479,8 +698,8 @@ function updateDateTimePreview() {
 }
 
 function setAppointmentDateTimeFromISO(isoString) {
-    const date = new Date(isoString);
-    if (Number.isNaN(date.getTime())) return;
+    const date = parseFlexibleDate(isoString);
+    if (!date) return;
 
     el.appointmentDay.value = String(date.getDate()).padStart(2, "0");
     el.appointmentMonth.value = String(date.getMonth() + 1).padStart(2, "0");
@@ -521,7 +740,9 @@ function resetSaleForm() {
     el.saleModalTitle.textContent = "Nova Venda de Produto";
     el.saleSubmitBtn.innerHTML = `<i data-lucide="shopping-bag"></i> Salvar Venda`;
     populateSaleProducts();
-    if (el.saleProduct.options.length > 0) updateSalePriceFromProduct();
+    if (el.saleProduct.options.length > 0) {
+        updateSalePriceFromProduct();
+    }
     renderLucideIcons();
 }
 
@@ -594,14 +815,27 @@ function getLowStockProducts() {
     return state.products.filter((item) => Number(item.quantity) <= LOW_STOCK_LIMIT);
 }
 
+function getTodayAppointments() {
+    return state.appointments
+        .filter((item) => isToday(item.date))
+        .sort((a, b) => {
+            const dateA = parseFlexibleDate(a.date);
+            const dateB = parseFlexibleDate(b.date);
+            if (!dateA && !dateB) return 0;
+            if (!dateA) return 1;
+            if (!dateB) return -1;
+            return dateA.getTime() - dateB.getTime();
+        });
+}
+
 function renderDashboard() {
-    const pendingToday = state.appointments.filter((item) => isToday(item.date));
+    const todayAppointments = getTodayAppointments();
     const lowStock = getLowStockProducts();
     const todayRevenue = getTodayRevenue();
     const totalTransactions = getTodayTransactionsCount();
     const averageTicket = totalTransactions ? todayRevenue / totalTransactions : 0;
 
-    animateCount(el.metricAppointments, pendingToday.length);
+    animateCount(el.metricAppointments, todayAppointments.length);
     animateCount(el.metricRevenue, todayRevenue, { isCurrency: true });
     animateCount(el.metricLowStock, lowStock.length);
     animateCount(el.metricClients, state.clients.length);
@@ -609,7 +843,7 @@ function renderDashboard() {
     animateCount(el.metricAverageTicket, averageTicket, { isCurrency: true });
     animateCount(el.metricProductsSold, getTodayProductsSoldCount());
 
-    renderDashboardAppointments(pendingToday);
+    renderDashboardAppointments(todayAppointments);
     renderDashboardLowStock(lowStock);
     renderRevenueChart(true);
 }
@@ -620,9 +854,7 @@ function renderDashboardAppointments(items) {
         return;
     }
 
-    const sorted = [...items].sort((a, b) => new Date(a.date) - new Date(b.date));
-
-    el.dashboardAppointments.innerHTML = sorted
+    el.dashboardAppointments.innerHTML = items
         .slice(0, 8)
         .map((item) => `
       <button class="list-item list-item--clickable" onclick="openFinishAppointmentModal('${item.id}')">
@@ -663,8 +895,8 @@ function getRevenueDataLast7Days() {
 
         const salesRevenue = state.sales
             .filter((item) => {
-                const d = new Date(item.date);
-                return d.getDate() === baseDate.getDate() && d.getMonth() === baseDate.getMonth() && d.getFullYear() === baseDate.getFullYear();
+                const d = parseFlexibleDate(item.date);
+                return d ? sameCalendarDay(d, baseDate) : false;
             })
             .reduce((sum, item) => sum + Number(item.total), 0);
 
@@ -699,7 +931,9 @@ function renderRevenueChart(animate = false) {
     const maxValue = Math.max(...data.map((item) => item.total), 100);
     const barWidth = Math.max((chartWidth / data.length) - 12, 18);
 
-    if (state.chartAnimationFrame) cancelAnimationFrame(state.chartAnimationFrame);
+    if (state.chartAnimationFrame) {
+        cancelAnimationFrame(state.chartAnimationFrame);
+    }
 
     function draw(progress = 1) {
         ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -708,8 +942,8 @@ function renderRevenueChart(animate = false) {
 
         ctx.beginPath();
         ctx.strokeStyle = document.documentElement.getAttribute("data-theme") === "dark"
-            ? "rgba(209, 196, 219, 0.18)"
-            : "rgba(171, 152, 184, 0.22)";
+            ? "rgba(212, 189, 178, 0.18)"
+            : "rgba(145, 116, 106, 0.22)";
         ctx.lineWidth = 1;
         ctx.moveTo(padding.left, padding.top + chartHeight);
         ctx.lineTo(width - padding.right, padding.top + chartHeight);
@@ -724,16 +958,16 @@ function renderRevenueChart(animate = false) {
             const gradient = ctx.createLinearGradient(0, y, 0, padding.top + chartHeight);
 
             if (document.documentElement.getAttribute("data-theme") === "dark") {
-                gradient.addColorStop(0, "rgba(206, 192, 223, 0.95)");
-                gradient.addColorStop(1, "rgba(186, 166, 210, 0.42)");
+                gradient.addColorStop(0, "rgba(216,194,176,0.95)");
+                gradient.addColorStop(1, "rgba(201,160,143,0.42)");
             } else {
-                gradient.addColorStop(0, "rgba(201, 182, 228, 0.95)");
-                gradient.addColorStop(1, "rgba(217, 191, 220, 0.45)");
+                gradient.addColorStop(0, "rgba(207,161,141,0.95)");
+                gradient.addColorStop(1, "rgba(239,225,210,0.45)");
             }
 
             drawRoundedRect(ctx, x, y, barWidth, Math.max(barHeight, 8), 10, gradient);
 
-            ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--text-soft").trim() || "#83768f";
+            ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--text-soft").trim() || "#8b6f65";
             ctx.font = window.innerWidth <= 640 ? "11px Segoe UI" : "12px Segoe UI";
             ctx.textAlign = "center";
             ctx.fillText(progress > 0.98 && item.total > 0 ? `R$ ${item.total.toFixed(0)}` : "-", x + barWidth / 2, y - 8);
@@ -753,7 +987,10 @@ function renderRevenueChart(animate = false) {
         const progress = Math.min((now - start) / duration, 1);
         const eased = 1 - Math.pow(1 - progress, 3);
         draw(eased);
-        if (progress < 1) state.chartAnimationFrame = requestAnimationFrame(step);
+
+        if (progress < 1) {
+            state.chartAnimationFrame = requestAnimationFrame(step);
+        }
     }
 
     state.chartAnimationFrame = requestAnimationFrame(step);
@@ -775,71 +1012,6 @@ function drawRoundedRect(ctx, x, y, width, height, radius, fillStyle) {
     ctx.closePath();
     ctx.fillStyle = fillStyle;
     ctx.fill();
-}
-
-async function loadAppointments() {
-    const rows = await listSheet(SHEET_NAMES.appointments);
-
-    state.appointments = rows.map((item) => ({
-        id: normalizeText(item.ID),
-        client: normalizeText(item["NOME CLIENTE"]),
-        service: normalizeText(item["SERVIÇO"]),
-        professional: normalizeText(item.PROFISSIONAL),
-        value: toNumber(item.VALOR),
-        date: normalizeText(item["DATA E HORA"])
-    }));
-}
-
-async function loadProducts() {
-    const rows = await listSheet(SHEET_NAMES.products);
-
-    state.products = rows.map((item) => ({
-        id: normalizeText(item.ID),
-        name: normalizeText(item.PRODUTO),
-        quantity: toNumber(item.QUANTIDADE),
-        price: toNumber(item["PREÇO"])
-    }));
-}
-
-async function loadClients() {
-    const rows = await listSheet(SHEET_NAMES.clients);
-
-    state.clients = rows.map((item) => ({
-        id: normalizeText(item.ID),
-        name: normalizeText(item.NOME),
-        phone: normalizeText(item.TELEFONE),
-        email: normalizeText(item["E-MAIL"])
-    }));
-}
-
-async function loadSales() {
-    const rows = await listSheet(SHEET_NAMES.sales);
-
-    state.sales = rows.map((item) => ({
-        id: normalizeText(item.ID),
-        productName: normalizeText(item.PRODUTO),
-        customer: normalizeText(item.CLIENTE),
-        quantity: toNumber(item.QUANTIDADE),
-        unitPrice: toNumber(item["PREÇO UNITÁRIO"]),
-        total: toNumber(item.TOTAL),
-        date: normalizeText(item.DATA)
-    }));
-}
-
-async function initializeAppData() {
-    try {
-        await Promise.all([
-            loadAppointments(),
-            loadProducts(),
-            loadClients(),
-            loadSales()
-        ]);
-
-        renderAll();
-    } catch (error) {
-        console.error(error);
-        alert("Erro ao carregar dados do Google Sheets. Verifique os cabeçalhos das abas e a implantação do Apps Script.");
-    }
 }
 
 function openAppointmentCreateModal() {
@@ -877,27 +1049,29 @@ async function saveAppointment(event) {
     }
 
     const data = {
-        "NOME CLIENTE": el.appointmentClient.value.trim(),
-        "SERVIÇO": el.appointmentService.value.trim(),
-        "PROFISSIONAL": el.appointmentProfessional.value,
-        "VALOR": Number(el.appointmentValue.value),
+        "NOME CLIENTE": normalizeText(el.appointmentClient.value),
+        "SERVIÇO": normalizeText(el.appointmentService.value),
+        "PROFISSIONAL": normalizeText(el.appointmentProfessional.value),
+        "VALOR": toNumber(el.appointmentValue.value),
         "DATA E HORA": dateTime
     };
 
     try {
-        if (state.editingAppointmentId) {
-            await updateSheetRow(SHEET_NAMES.appointments, state.editingAppointmentId, data);
-        } else {
-            await createSheetRow(SHEET_NAMES.appointments, data);
-        }
+        await withProcessing(el.appointmentSubmitBtn, "Processando...", async () => {
+            if (state.editingAppointmentId) {
+                await updateSheetRow(SHEET_NAMES.appointments, state.editingAppointmentId, data);
+            } else {
+                await createSheetRow(SHEET_NAMES.appointments, data);
+            }
 
-        await loadAppointments();
-        renderAll();
-        resetAppointmentForm();
-        closeModal(el.appointmentModal);
+            await loadAppointments();
+            renderAll();
+            resetAppointmentForm();
+            closeModal(el.appointmentModal);
+        });
     } catch (error) {
         console.error(error);
-        alert("Não foi possível salvar o agendamento.");
+        alert(error.message || "Não foi possível salvar o agendamento.");
     }
 }
 
@@ -910,7 +1084,7 @@ async function deleteAppointment(id) {
         renderAll();
     } catch (error) {
         console.error(error);
-        alert("Não foi possível excluir o agendamento.");
+        alert(error.message || "Não foi possível excluir o agendamento.");
     }
 }
 
@@ -938,24 +1112,26 @@ async function finishAppointment() {
     if (!appointment) return;
 
     try {
-        await createSheetRow(SHEET_NAMES.sales, {
-            "PRODUTO": appointment.service,
-            "CLIENTE": appointment.client,
-            "QUANTIDADE": 1,
-            "PREÇO UNITÁRIO": Number(appointment.value),
-            "TOTAL": Number(appointment.value),
-            "DATA": new Date().toISOString()
+        await withProcessing(el.confirmFinishAppointmentBtn, "Processando...", async () => {
+            await createSheetRow(SHEET_NAMES.sales, {
+                "PRODUTO": appointment.service,
+                "CLIENTE": appointment.client,
+                "QUANTIDADE": 1,
+                "PREÇO UNITÁRIO": Number(appointment.value),
+                "TOTAL": Number(appointment.value),
+                "DATA": new Date().toISOString()
+            });
+
+            await deleteSheetRow(SHEET_NAMES.appointments, appointment.id);
+
+            await Promise.all([loadAppointments(), loadSales()]);
+            renderAll();
+            closeModal(el.finishAppointmentModal);
+            state.selectedAppointmentId = null;
         });
-
-        await deleteSheetRow(SHEET_NAMES.appointments, appointment.id);
-
-        await Promise.all([loadAppointments(), loadSales()]);
-        renderAll();
-        closeModal(el.finishAppointmentModal);
-        state.selectedAppointmentId = null;
     } catch (error) {
         console.error(error);
-        alert("Não foi possível encerrar o atendimento.");
+        alert(error.message || "Não foi possível encerrar o atendimento.");
     }
 }
 
@@ -965,7 +1141,14 @@ function renderAppointments(filteredAppointments = state.appointments) {
         return;
     }
 
-    const sorted = [...filteredAppointments].sort((a, b) => new Date(a.date) - new Date(b.date));
+    const sorted = [...filteredAppointments].sort((a, b) => {
+        const dateA = parseFlexibleDate(a.date);
+        const dateB = parseFlexibleDate(b.date);
+        if (!dateA && !dateB) return 0;
+        if (!dateA) return 1;
+        if (!dateB) return -1;
+        return dateA.getTime() - dateB.getTime();
+    });
 
     el.appointmentsBoard.innerHTML = sorted
         .map((item) => `
@@ -1033,27 +1216,29 @@ function filterAppointments() {
 async function saveProduct(event) {
     event.preventDefault();
 
-    const id = el.productId.value.trim();
+    const id = normalizeText(el.productId.value);
     const data = {
-        "PRODUTO": el.productName.value.trim(),
-        "QUANTIDADE": Number(el.productQuantity.value),
-        "PREÇO": Number(el.productPrice.value)
+        "PRODUTO": normalizeText(el.productName.value),
+        "QUANTIDADE": toInteger(el.productQuantity.value),
+        "PREÇO": toNumber(el.productPrice.value)
     };
 
     try {
-        if (id) {
-            await updateSheetRow(SHEET_NAMES.products, id, data);
-        } else {
-            await createSheetRow(SHEET_NAMES.products, data);
-        }
+        await withProcessing(el.productSubmitBtn, "Processando...", async () => {
+            if (id) {
+                await updateSheetRow(SHEET_NAMES.products, id, data);
+            } else {
+                await createSheetRow(SHEET_NAMES.products, data);
+            }
 
-        await loadProducts();
-        renderAll();
-        resetProductForm();
-        closeModal(el.productModal);
+            await loadProducts();
+            renderAll();
+            resetProductForm();
+            closeModal(el.productModal);
+        });
     } catch (error) {
         console.error(error);
-        alert("Não foi possível salvar o produto.");
+        alert(error.message || "Não foi possível salvar o produto.");
     }
 }
 
@@ -1082,7 +1267,7 @@ async function deleteProduct(id) {
         resetProductForm();
     } catch (error) {
         console.error(error);
-        alert("Não foi possível excluir o produto.");
+        alert(error.message || "Não foi possível excluir o produto.");
     }
 }
 
@@ -1125,20 +1310,25 @@ function renderProducts() {
 async function saveClient(event) {
     event.preventDefault();
 
-    try {
-        await createSheetRow(SHEET_NAMES.clients, {
-            "NOME": el.clientName.value.trim(),
-            "TELEFONE": el.clientPhone.value.trim(),
-            "E-MAIL": el.clientEmail.value.trim()
-        });
+    const submitButton = el.clientForm.querySelector('button[type="submit"]');
 
-        await loadClients();
-        renderAll();
-        resetClientForm();
-        closeModal(el.clientModal);
+    const data = {
+        "NOME": normalizeText(el.clientName.value),
+        "TELEFONE": normalizeText(el.clientPhone.value),
+        "E-MAIL": normalizeText(el.clientEmail.value)
+    };
+
+    try {
+        await withProcessing(submitButton, "Processando...", async () => {
+            await createSheetRow(SHEET_NAMES.clients, data);
+            await loadClients();
+            renderAll();
+            resetClientForm();
+            closeModal(el.clientModal);
+        });
     } catch (error) {
         console.error(error);
-        alert("Não foi possível salvar o cliente.");
+        alert(error.message || "Não foi possível salvar o cliente.");
     }
 }
 
@@ -1151,7 +1341,7 @@ async function deleteClient(id) {
         renderAll();
     } catch (error) {
         console.error(error);
-        alert("Não foi possível apagar o cliente.");
+        alert(error.message || "Não foi possível apagar o cliente.");
     }
 }
 
@@ -1183,11 +1373,14 @@ function renderClients(filteredClients = state.clients) {
 
 function filterClients() {
     const searchTerm = el.clientSearch.value.toLowerCase().trim();
-    renderClients(state.clients.filter((client) => client.name.toLowerCase().includes(searchTerm)));
+    renderClients(
+        state.clients.filter((client) => client.name.toLowerCase().includes(searchTerm))
+    );
 }
 
 function populateSaleProducts() {
-    const availableProducts = state.products.filter((item) => Number(item.quantity) > 0 || item.id === el.saleProduct.value);
+    const currentSelectedValue = el.saleProduct.value;
+    const availableProducts = state.products.filter((item) => Number(item.quantity) > 0 || item.id === currentSelectedValue);
 
     if (availableProducts.length === 0) {
         el.saleProduct.innerHTML = `<option value="">Sem produtos disponíveis</option>`;
@@ -1261,7 +1454,7 @@ async function deleteSale(id) {
         renderAll();
     } catch (error) {
         console.error(error);
-        alert("Não foi possível excluir a venda.");
+        alert(error.message || "Não foi possível excluir a venda.");
     }
 }
 
@@ -1274,8 +1467,8 @@ async function saveSale(event) {
         return;
     }
 
-    const quantity = Number(el.saleQuantity.value);
-    const unitPrice = Number(el.saleUnitPrice.value);
+    const quantity = toInteger(el.saleQuantity.value);
+    const unitPrice = toNumber(el.saleUnitPrice.value);
 
     if (quantity <= 0) {
         alert("Informe uma quantidade válida.");
@@ -1283,39 +1476,67 @@ async function saveSale(event) {
     }
 
     try {
-        if (state.editingSaleId) {
-            const oldSale = state.sales.find((item) => item.id === state.editingSaleId);
-            if (!oldSale) return;
+        await withProcessing(el.saleSubmitBtn, "Processando...", async () => {
+            if (state.editingSaleId) {
+                const oldSale = state.sales.find((item) => item.id === state.editingSaleId);
+                if (!oldSale) throw new Error("Venda antiga não encontrada.");
 
-            const oldProduct = state.products.find((item) => item.name === oldSale.productName);
-            let availableStock = Number(product.quantity);
+                const oldProduct = state.products.find((item) => item.name === oldSale.productName);
+                let availableStock = Number(product.quantity);
 
-            if (oldProduct && oldProduct.id === product.id) {
-                availableStock += Number(oldSale.quantity);
-            }
-
-            if (quantity > availableStock) {
-                alert("Quantidade maior que o estoque disponível.");
-                return;
-            }
-
-            if (oldProduct) {
-                const restoredQty = oldProduct.id === product.id
-                    ? availableStock - quantity
-                    : Number(oldProduct.quantity) + Number(oldSale.quantity);
-
-                await updateSheetRow(SHEET_NAMES.products, oldProduct.id, {
-                    "PRODUTO": oldProduct.name,
-                    "QUANTIDADE": restoredQty,
-                    "PREÇO": Number(oldProduct.price)
-                });
-            }
-
-            if (product.id !== (oldProduct?.id || "")) {
-                if (quantity > Number(product.quantity)) {
-                    alert("Quantidade maior que o estoque disponível.");
-                    return;
+                if (oldProduct && oldProduct.id === product.id) {
+                    availableStock += Number(oldSale.quantity);
                 }
+
+                if (quantity > availableStock) {
+                    throw new Error("Quantidade maior que o estoque disponível.");
+                }
+
+                if (oldProduct) {
+                    const restoredQty = oldProduct.id === product.id
+                        ? availableStock - quantity
+                        : Number(oldProduct.quantity) + Number(oldSale.quantity);
+
+                    await updateSheetRow(SHEET_NAMES.products, oldProduct.id, {
+                        "PRODUTO": oldProduct.name,
+                        "QUANTIDADE": restoredQty,
+                        "PREÇO": Number(oldProduct.price)
+                    });
+                }
+
+                if (product.id !== (oldProduct?.id || "")) {
+                    if (quantity > Number(product.quantity)) {
+                        throw new Error("Quantidade maior que o estoque disponível.");
+                    }
+
+                    await updateSheetRow(SHEET_NAMES.products, product.id, {
+                        "PRODUTO": product.name,
+                        "QUANTIDADE": Number(product.quantity) - quantity,
+                        "PREÇO": Number(product.price)
+                    });
+                }
+
+                await updateSheetRow(SHEET_NAMES.sales, state.editingSaleId, {
+                    "PRODUTO": product.name,
+                    "CLIENTE": normalizeText(el.saleCustomer.value) || "Cliente avulso",
+                    "QUANTIDADE": quantity,
+                    "PREÇO UNITÁRIO": unitPrice,
+                    "TOTAL": quantity * unitPrice,
+                    "DATA": oldSale.date
+                });
+            } else {
+                if (quantity > Number(product.quantity)) {
+                    throw new Error("Quantidade maior que o estoque disponível.");
+                }
+
+                await createSheetRow(SHEET_NAMES.sales, {
+                    "PRODUTO": product.name,
+                    "CLIENTE": normalizeText(el.saleCustomer.value) || "Cliente avulso",
+                    "QUANTIDADE": quantity,
+                    "PREÇO UNITÁRIO": unitPrice,
+                    "TOTAL": quantity * unitPrice,
+                    "DATA": new Date().toISOString()
+                });
 
                 await updateSheetRow(SHEET_NAMES.products, product.id, {
                     "PRODUTO": product.name,
@@ -1324,43 +1545,14 @@ async function saveSale(event) {
                 });
             }
 
-            await updateSheetRow(SHEET_NAMES.sales, state.editingSaleId, {
-                "PRODUTO": product.name,
-                "CLIENTE": el.saleCustomer.value.trim() || "Cliente avulso",
-                "QUANTIDADE": quantity,
-                "PREÇO UNITÁRIO": unitPrice,
-                "TOTAL": quantity * unitPrice,
-                "DATA": oldSale.date
-            });
-        } else {
-            if (quantity > Number(product.quantity)) {
-                alert("Quantidade maior que o estoque disponível.");
-                return;
-            }
-
-            await createSheetRow(SHEET_NAMES.sales, {
-                "PRODUTO": product.name,
-                "CLIENTE": el.saleCustomer.value.trim() || "Cliente avulso",
-                "QUANTIDADE": quantity,
-                "PREÇO UNITÁRIO": unitPrice,
-                "TOTAL": quantity * unitPrice,
-                "DATA": new Date().toISOString()
-            });
-
-            await updateSheetRow(SHEET_NAMES.products, product.id, {
-                "PRODUTO": product.name,
-                "QUANTIDADE": Number(product.quantity) - quantity,
-                "PREÇO": Number(product.price)
-            });
-        }
-
-        await Promise.all([loadProducts(), loadSales()]);
-        renderAll();
-        resetSaleForm();
-        closeModal(el.saleModal);
+            await Promise.all([loadProducts(), loadSales()]);
+            renderAll();
+            resetSaleForm();
+            closeModal(el.saleModal);
+        });
     } catch (error) {
         console.error(error);
-        alert("Não foi possível salvar a venda.");
+        alert(error.message || "Não foi possível salvar a venda.");
     }
 }
 
@@ -1370,7 +1562,14 @@ function renderSales(filteredSales = state.sales) {
         return;
     }
 
-    const sorted = [...filteredSales].sort((a, b) => new Date(b.date) - new Date(a.date));
+    const sorted = [...filteredSales].sort((a, b) => {
+        const dateA = parseFlexibleDate(a.date);
+        const dateB = parseFlexibleDate(b.date);
+        if (!dateA && !dateB) return 0;
+        if (!dateA) return 1;
+        if (!dateB) return -1;
+        return dateB.getTime() - dateA.getTime();
+    });
 
     el.salesTableBody.innerHTML = sorted
         .map((item) => `
@@ -1487,7 +1686,9 @@ el.closeModalButtons.forEach((button) => {
     el.saleModal
 ].forEach((modal) => {
     modal.addEventListener("click", (event) => {
-        if (event.target === modal) closeModal(modal);
+        if (event.target === modal) {
+            closeModal(modal);
+        }
     });
 });
 

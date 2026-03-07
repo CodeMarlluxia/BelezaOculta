@@ -74,7 +74,16 @@ const state = {
     selectedAppointmentId: null,
     editingAppointmentId: null,
     editingSaleId: null,
-    chartAnimationFrame: null
+    chartAnimationFrame: null,
+    lastTouched: {
+        appointments: null,
+        products: null,
+        clients: null,
+        sales: null
+    },
+    ui: {
+        toasts: new Map()
+    }
 };
 
 const el = {
@@ -187,6 +196,153 @@ function ensureSpinnerStyle() {
     }
   `;
     document.head.appendChild(styleTag);
+}
+
+function ensureToastStack() {
+    let toastStack = document.getElementById("toastStack");
+
+    if (!toastStack) {
+        toastStack = document.createElement("div");
+        toastStack.id = "toastStack";
+        toastStack.className = "toast-stack";
+        document.body.appendChild(toastStack);
+    }
+
+    return toastStack;
+}
+
+function createToast({ type = "loading", title, message = "", autoClose = false, duration = 2600 }) {
+    const stack = ensureToastStack();
+    const toastId = `toast_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+
+    const iconMap = {
+        loading: "loader-circle",
+        success: "check-check",
+        error: "triangle-alert"
+    };
+
+    const toast = document.createElement("div");
+    toast.className = `toast toast--${type}`;
+    toast.dataset.toastId = toastId;
+    toast.dataset.autoclose = autoClose ? "true" : "false";
+    toast.innerHTML = `
+        <div class="toast__icon">
+            <i data-lucide="${iconMap[type] || "info"}" class="${type === "loading" ? "spin-loader" : ""}"></i>
+        </div>
+        <div class="toast__content">
+            <strong>${title}</strong>
+            <p>${message}</p>
+        </div>
+        <div class="toast__progress" style="${autoClose ? `animation-duration:${duration}ms;` : ""}"></div>
+    `;
+
+    stack.appendChild(toast);
+    state.ui.toasts.set(toastId, toast);
+    renderLucideIcons();
+
+    if (autoClose) {
+        window.setTimeout(() => removeToast(toastId), duration);
+    }
+
+    return toastId;
+}
+
+function updateToast(toastId, { type = "success", title, message = "", autoClose = true, duration = 2600 }) {
+    const toast = state.ui.toasts.get(toastId);
+    if (!toast) return;
+
+    toast.className = `toast toast--${type}`;
+    toast.dataset.autoclose = autoClose ? "true" : "false";
+
+    const iconMap = {
+        loading: "loader-circle",
+        success: "check-check",
+        error: "triangle-alert"
+    };
+
+    toast.innerHTML = `
+        <div class="toast__icon">
+            <i data-lucide="${iconMap[type] || "info"}" class="${type === "loading" ? "spin-loader" : ""}"></i>
+        </div>
+        <div class="toast__content">
+            <strong>${title}</strong>
+            <p>${message}</p>
+        </div>
+        <div class="toast__progress" style="${autoClose ? `animation-duration:${duration}ms;` : ""}"></div>
+    `;
+
+    renderLucideIcons();
+
+    if (autoClose) {
+        window.setTimeout(() => removeToast(toastId), duration);
+    }
+}
+
+function removeToast(toastId) {
+    const toast = state.ui.toasts.get(toastId);
+    if (!toast) return;
+
+    toast.classList.add("is-leaving");
+
+    window.setTimeout(() => {
+        toast.remove();
+        state.ui.toasts.delete(toastId);
+    }, 220);
+}
+
+function showFeedbackToastLoading(title, message) {
+    return createToast({
+        type: "loading",
+        title,
+        message,
+        autoClose: false
+    });
+}
+
+function showFeedbackToastSuccess(toastId, title, message) {
+    updateToast(toastId, {
+        type: "success",
+        title,
+        message,
+        autoClose: true,
+        duration: 2400
+    });
+}
+
+function showFeedbackToastError(toastId, title, message) {
+    if (toastId && state.ui.toasts.has(toastId)) {
+        updateToast(toastId, {
+            type: "error",
+            title,
+            message,
+            autoClose: true,
+            duration: 3200
+        });
+        return;
+    }
+
+    createToast({
+        type: "error",
+        title,
+        message,
+        autoClose: true,
+        duration: 3200
+    });
+}
+
+function markRecentlyTouched(collectionKey, id) {
+    if (!id) return;
+    state.lastTouched[collectionKey] = id;
+
+    window.setTimeout(() => {
+        if (state.lastTouched[collectionKey] === id) {
+            state.lastTouched[collectionKey] = null;
+        }
+    }, 1800);
+}
+
+function highlightIfTouched(collectionKey, id) {
+    return state.lastTouched[collectionKey] === id ? "flash-created" : "";
 }
 
 function normalizeText(value) {
@@ -354,22 +510,39 @@ function setButtonProcessing(button, isProcessing, processingText) {
     if (isProcessing) {
         button.dataset.originalHtml = button.innerHTML;
         button.disabled = true;
+        button.classList.add("is-processing");
         button.innerHTML = `<i data-lucide="loader-circle" class="spin-loader"></i> ${processingText}`;
         renderLucideIcons();
         return;
     }
 
     button.disabled = false;
+    button.classList.remove("is-processing");
     if (button.dataset.originalHtml) {
         button.innerHTML = button.dataset.originalHtml;
     }
     renderLucideIcons();
 }
 
-async function withProcessing(button, processingText, callback) {
+async function withProcessing(button, processingText, callback, options = {}) {
+    const {
+        loadingTitle = "Salvando informações",
+        loadingMessage = "Aguarde enquanto os dados são enviados para a planilha.",
+        successTitle = "Alteração concluída",
+        successMessage = "Os dados foram atualizados com sucesso.",
+        errorTitle = "Falha ao salvar"
+    } = options;
+
+    const toastId = showFeedbackToastLoading(loadingTitle, loadingMessage);
+
     try {
         setButtonProcessing(button, true, processingText);
-        return await callback();
+        const result = await callback();
+        showFeedbackToastSuccess(toastId, successTitle, successMessage);
+        return result;
+    } catch (error) {
+        showFeedbackToastError(toastId, errorTitle, error.message || "Não foi possível concluir a operação.");
+        throw error;
     } finally {
         setButtonProcessing(button, false, processingText);
     }
@@ -857,7 +1030,7 @@ function renderDashboardAppointments(items) {
     el.dashboardAppointments.innerHTML = items
         .slice(0, 8)
         .map((item) => `
-      <button class="list-item list-item--clickable" onclick="openFinishAppointmentModal('${item.id}')">
+      <button class="list-item list-item--clickable ${highlightIfTouched("appointments", item.id)}" onclick="openFinishAppointmentModal('${item.id}')">
         <strong>${item.client}</strong>
         <small>${item.service} • ${item.professional}</small><br>
         <small>${formatDateTime(item.date)} • ${formatCurrency(item.value)}</small>
@@ -874,7 +1047,7 @@ function renderDashboardLowStock(items) {
 
     el.dashboardLowStock.innerHTML = items
         .map((item) => `
-      <div class="list-item">
+      <div class="list-item ${highlightIfTouched("products", item.id)}">
         <strong>${item.name}</strong>
         <small>Quantidade atual: ${item.quantity}</small>
       </div>
@@ -1038,6 +1211,24 @@ function editAppointment(id) {
     openModal(el.appointmentModal);
 }
 
+function renderAppointmentSection() {
+    renderAppointments();
+    renderDashboard();
+    renderLucideIcons();
+}
+
+function getLastAppointmentByPayload(data) {
+    return [...state.appointments]
+        .reverse()
+        .find((item) =>
+            item.client === data["NOME CLIENTE"] &&
+            item.service === data["SERVIÇO"] &&
+            item.professional === data["PROFISSIONAL"] &&
+            Number(item.value) === Number(data["VALOR"]) &&
+            item.date === data["DATA E HORA"]
+        );
+}
+
 async function saveAppointment(event) {
     event.preventDefault();
 
@@ -1056,18 +1247,36 @@ async function saveAppointment(event) {
         "DATA E HORA": dateTime
     };
 
+    const isEditing = Boolean(state.editingAppointmentId);
+
     try {
-        await withProcessing(el.appointmentSubmitBtn, "Processando...", async () => {
-            if (state.editingAppointmentId) {
+        await withProcessing(el.appointmentSubmitBtn, "Salvando...", async () => {
+            if (isEditing) {
                 await updateSheetRow(SHEET_NAMES.appointments, state.editingAppointmentId, data);
             } else {
                 await createSheetRow(SHEET_NAMES.appointments, data);
             }
 
             await loadAppointments();
-            renderAll();
+
+            if (isEditing) {
+                markRecentlyTouched("appointments", state.editingAppointmentId);
+            } else {
+                const created = getLastAppointmentByPayload(data);
+                if (created) markRecentlyTouched("appointments", created.id);
+            }
+
+            renderAppointmentSection();
             resetAppointmentForm();
             closeModal(el.appointmentModal);
+        }, {
+            loadingTitle: isEditing ? "Atualizando agendamento" : "Salvando agendamento",
+            loadingMessage: "Os dados estão sendo sincronizados com a planilha do Google Sheets.",
+            successTitle: isEditing ? "Agendamento atualizado" : "Agendamento salvo",
+            successMessage: isEditing
+                ? "A alteração do agendamento foi confirmada com sucesso."
+                : "O novo agendamento foi registrado com sucesso.",
+            errorTitle: "Falha ao salvar agendamento"
         });
     } catch (error) {
         console.error(error);
@@ -1079,11 +1288,14 @@ async function deleteAppointment(id) {
     if (!confirm("Deseja realmente excluir este agendamento?")) return;
 
     try {
+        const toastId = showFeedbackToastLoading("Excluindo agendamento", "Aguarde enquanto a exclusão é processada.");
         await deleteSheetRow(SHEET_NAMES.appointments, id);
         await loadAppointments();
-        renderAll();
+        renderAppointmentSection();
+        showFeedbackToastSuccess(toastId, "Agendamento excluído", "O registro foi removido com sucesso.");
     } catch (error) {
         console.error(error);
+        showFeedbackToastError(null, "Falha ao excluir", error.message || "Não foi possível excluir o agendamento.");
         alert(error.message || "Não foi possível excluir o agendamento.");
     }
 }
@@ -1112,7 +1324,7 @@ async function finishAppointment() {
     if (!appointment) return;
 
     try {
-        await withProcessing(el.confirmFinishAppointmentBtn, "Processando...", async () => {
+        await withProcessing(el.confirmFinishAppointmentBtn, "Encerrando...", async () => {
             await createSheetRow(SHEET_NAMES.sales, {
                 "PRODUTO": appointment.service,
                 "CLIENTE": appointment.client,
@@ -1125,9 +1337,31 @@ async function finishAppointment() {
             await deleteSheetRow(SHEET_NAMES.appointments, appointment.id);
 
             await Promise.all([loadAppointments(), loadSales()]);
-            renderAll();
+
+            const createdSale = [...state.sales]
+                .reverse()
+                .find((item) =>
+                    item.productName === appointment.service &&
+                    item.customer === appointment.client &&
+                    Number(item.quantity) === 1 &&
+                    Number(item.total) === Number(appointment.value)
+                );
+
+            if (createdSale) {
+                markRecentlyTouched("sales", createdSale.id);
+            }
+
+            renderDashboard();
+            renderAppointments();
+            renderSales();
             closeModal(el.finishAppointmentModal);
             state.selectedAppointmentId = null;
+        }, {
+            loadingTitle: "Encerrando atendimento",
+            loadingMessage: "A venda correspondente está sendo gerada e o agendamento será removido.",
+            successTitle: "Atendimento encerrado",
+            successMessage: "A ação foi confirmada e refletida no sistema.",
+            errorTitle: "Falha ao encerrar atendimento"
         });
     } catch (error) {
         console.error(error);
@@ -1152,7 +1386,7 @@ function renderAppointments(filteredAppointments = state.appointments) {
 
     el.appointmentsBoard.innerHTML = sorted
         .map((item) => `
-      <article class="appointment-card">
+      <article class="appointment-card ${highlightIfTouched("appointments", item.id)}">
         <div class="appointment-card__top">
           <div class="appointment-card__client">
             <div class="client-avatar">${getInitials(item.client)}</div>
@@ -1213,6 +1447,13 @@ function filterAppointments() {
     );
 }
 
+function renderProductSection() {
+    renderProducts();
+    renderDashboard();
+    populateSaleProducts();
+    renderLucideIcons();
+}
+
 async function saveProduct(event) {
     event.preventDefault();
 
@@ -1224,7 +1465,7 @@ async function saveProduct(event) {
     };
 
     try {
-        await withProcessing(el.productSubmitBtn, "Processando...", async () => {
+        await withProcessing(el.productSubmitBtn, "Salvando...", async () => {
             if (id) {
                 await updateSheetRow(SHEET_NAMES.products, id, data);
             } else {
@@ -1232,9 +1473,30 @@ async function saveProduct(event) {
             }
 
             await loadProducts();
-            renderAll();
+
+            if (id) {
+                markRecentlyTouched("products", id);
+            } else {
+                const createdProduct = [...state.products]
+                    .reverse()
+                    .find((item) =>
+                        item.name === data["PRODUTO"] &&
+                        Number(item.quantity) === Number(data["QUANTIDADE"]) &&
+                        Number(item.price) === Number(data["PREÇO"])
+                    );
+
+                if (createdProduct) markRecentlyTouched("products", createdProduct.id);
+            }
+
+            renderProductSection();
             resetProductForm();
             closeModal(el.productModal);
+        }, {
+            loadingTitle: id ? "Atualizando produto" : "Salvando produto",
+            loadingMessage: "O cadastro do produto está sendo enviado para a planilha.",
+            successTitle: id ? "Produto atualizado" : "Produto cadastrado",
+            successMessage: "A alteração foi confirmada com sucesso.",
+            errorTitle: "Falha ao salvar produto"
         });
     } catch (error) {
         console.error(error);
@@ -1261,12 +1523,15 @@ async function deleteProduct(id) {
     if (!confirm("Deseja realmente excluir este produto?")) return;
 
     try {
+        const toastId = showFeedbackToastLoading("Excluindo produto", "Aguarde enquanto a exclusão é processada.");
         await deleteSheetRow(SHEET_NAMES.products, id);
         await loadProducts();
-        renderAll();
+        renderProductSection();
         resetProductForm();
+        showFeedbackToastSuccess(toastId, "Produto excluído", "O produto foi removido com sucesso.");
     } catch (error) {
         console.error(error);
+        showFeedbackToastError(null, "Falha ao excluir", error.message || "Não foi possível excluir o produto.");
         alert(error.message || "Não foi possível excluir o produto.");
     }
 }
@@ -1285,7 +1550,7 @@ function renderProducts() {
 
     el.productsTableBody.innerHTML = state.products
         .map((item) => `
-      <tr>
+      <tr class="${highlightIfTouched("products", item.id)}">
         <td>${item.name}</td>
         <td>${item.quantity}</td>
         <td>${formatCurrency(item.price)}</td>
@@ -1307,6 +1572,12 @@ function renderProducts() {
     renderLucideIcons();
 }
 
+function renderClientSection() {
+    renderClients();
+    renderDashboard();
+    renderLucideIcons();
+}
+
 async function saveClient(event) {
     event.preventDefault();
 
@@ -1319,12 +1590,29 @@ async function saveClient(event) {
     };
 
     try {
-        await withProcessing(submitButton, "Processando...", async () => {
+        await withProcessing(submitButton, "Salvando...", async () => {
             await createSheetRow(SHEET_NAMES.clients, data);
             await loadClients();
-            renderAll();
+
+            const createdClient = [...state.clients]
+                .reverse()
+                .find((item) =>
+                    item.name === data["NOME"] &&
+                    item.phone === data["TELEFONE"] &&
+                    item.email === data["E-MAIL"]
+                );
+
+            if (createdClient) markRecentlyTouched("clients", createdClient.id);
+
+            renderClientSection();
             resetClientForm();
             closeModal(el.clientModal);
+        }, {
+            loadingTitle: "Salvando cliente",
+            loadingMessage: "O cadastro do cliente está sendo sincronizado com a planilha.",
+            successTitle: "Cliente cadastrado",
+            successMessage: "O cadastro foi concluído com sucesso.",
+            errorTitle: "Falha ao salvar cliente"
         });
     } catch (error) {
         console.error(error);
@@ -1336,11 +1624,14 @@ async function deleteClient(id) {
     if (!confirm("Deseja realmente apagar este cliente?")) return;
 
     try {
+        const toastId = showFeedbackToastLoading("Excluindo cliente", "Aguarde enquanto o cadastro é removido.");
         await deleteSheetRow(SHEET_NAMES.clients, id);
         await loadClients();
-        renderAll();
+        renderClientSection();
+        showFeedbackToastSuccess(toastId, "Cliente excluído", "O cadastro foi removido com sucesso.");
     } catch (error) {
         console.error(error);
+        showFeedbackToastError(null, "Falha ao excluir", error.message || "Não foi possível apagar o cliente.");
         alert(error.message || "Não foi possível apagar o cliente.");
     }
 }
@@ -1353,7 +1644,7 @@ function renderClients(filteredClients = state.clients) {
 
     el.clientsTableBody.innerHTML = filteredClients
         .map((item) => `
-      <tr>
+      <tr class="${highlightIfTouched("clients", item.id)}">
         <td>${item.name}</td>
         <td>${item.phone}</td>
         <td>${item.email || "-"}</td>
@@ -1436,6 +1727,7 @@ async function deleteSale(id) {
     if (!confirm("Deseja realmente excluir esta venda?")) return;
 
     try {
+        const toastId = showFeedbackToastLoading("Excluindo venda", "A venda está sendo removida e o estoque será recomposto.");
         const sale = state.sales.find((item) => item.id === id);
 
         if (sale) {
@@ -1451,9 +1743,14 @@ async function deleteSale(id) {
 
         await deleteSheetRow(SHEET_NAMES.sales, id);
         await Promise.all([loadProducts(), loadSales()]);
-        renderAll();
+        renderDashboard();
+        renderProducts();
+        populateSaleProducts();
+        renderSales();
+        showFeedbackToastSuccess(toastId, "Venda excluída", "A exclusão foi concluída com sucesso.");
     } catch (error) {
         console.error(error);
+        showFeedbackToastError(null, "Falha ao excluir", error.message || "Não foi possível excluir a venda.");
         alert(error.message || "Não foi possível excluir a venda.");
     }
 }
@@ -1476,7 +1773,7 @@ async function saveSale(event) {
     }
 
     try {
-        await withProcessing(el.saleSubmitBtn, "Processando...", async () => {
+        await withProcessing(el.saleSubmitBtn, "Salvando...", async () => {
             if (state.editingSaleId) {
                 const oldSale = state.sales.find((item) => item.id === state.editingSaleId);
                 if (!oldSale) throw new Error("Venda antiga não encontrada.");
@@ -1524,6 +1821,8 @@ async function saveSale(event) {
                     "TOTAL": quantity * unitPrice,
                     "DATA": oldSale.date
                 });
+
+                markRecentlyTouched("sales", state.editingSaleId);
             } else {
                 if (quantity > Number(product.quantity)) {
                     throw new Error("Quantidade maior que o estoque disponível.");
@@ -1546,9 +1845,34 @@ async function saveSale(event) {
             }
 
             await Promise.all([loadProducts(), loadSales()]);
-            renderAll();
+
+            if (!state.editingSaleId) {
+                const createdSale = [...state.sales]
+                    .reverse()
+                    .find((item) =>
+                        item.productName === product.name &&
+                        item.customer === (normalizeText(el.saleCustomer.value) || "Cliente avulso") &&
+                        Number(item.quantity) === quantity &&
+                        Number(item.unitPrice) === unitPrice
+                    );
+
+                if (createdSale) markRecentlyTouched("sales", createdSale.id);
+            }
+
+            markRecentlyTouched("products", product.id);
+
+            renderDashboard();
+            renderProducts();
+            populateSaleProducts();
+            renderSales();
             resetSaleForm();
             closeModal(el.saleModal);
+        }, {
+            loadingTitle: state.editingSaleId ? "Atualizando venda" : "Salvando venda",
+            loadingMessage: "A venda e o estoque estão sendo sincronizados com a planilha.",
+            successTitle: state.editingSaleId ? "Venda atualizada" : "Venda registrada",
+            successMessage: "A alteração foi confirmada e refletida no sistema.",
+            errorTitle: "Falha ao salvar venda"
         });
     } catch (error) {
         console.error(error);
@@ -1573,7 +1897,7 @@ function renderSales(filteredSales = state.sales) {
 
     el.salesTableBody.innerHTML = sorted
         .map((item) => `
-      <tr>
+      <tr class="${highlightIfTouched("sales", item.id)}">
         <td>${item.productName}</td>
         <td>${item.customer}</td>
         <td>${item.quantity}</td>
@@ -1723,6 +2047,7 @@ function init() {
     updateAuthView();
     handleResponsiveSidebar();
     updateDateTimePreview();
+    ensureToastStack();
     renderLucideIcons();
 
     if (isAuthenticated()) {

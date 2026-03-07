@@ -1,8 +1,6 @@
+const API_BASE_URL = "https://script.google.com/macros/s/AKfycbyVNqoHcQUE9w8v1KDZGRuceuCgXGsiZRXFo3bIF5HOTdLiJpvgVaKs7vK4z3N8BoCF/exec";
+
 const STORAGE_KEYS = {
-    appointments: "beleza_oculta_appointments",
-    products: "beleza_oculta_products",
-    clients: "beleza_oculta_clients",
-    sales: "beleza_oculta_sales",
     auth: "beleza_oculta_auth",
     theme: "beleza_oculta_theme"
 };
@@ -28,11 +26,18 @@ const MONTHS_PT_BR = [
     { value: "12", label: "Dezembro" }
 ];
 
+const SHEET_NAMES = {
+    appointments: "AGENDAMENTOS",
+    products: "CAD. PRODUTOS",
+    clients: "CAD. CLIENTES",
+    sales: "VENDAS"
+};
+
 const state = {
-    appointments: JSON.parse(localStorage.getItem(STORAGE_KEYS.appointments)) || [],
-    products: JSON.parse(localStorage.getItem(STORAGE_KEYS.products)) || [],
-    clients: JSON.parse(localStorage.getItem(STORAGE_KEYS.clients)) || [],
-    sales: JSON.parse(localStorage.getItem(STORAGE_KEYS.sales)) || [],
+    appointments: [],
+    products: [],
+    clients: [],
+    sales: [],
     currentSectionId: "dashboard",
     selectedAppointmentId: null,
     editingAppointmentId: null,
@@ -133,11 +138,96 @@ function renderLucideIcons() {
     if (window.lucide) window.lucide.createIcons();
 }
 
-function persistData() {
-    localStorage.setItem(STORAGE_KEYS.appointments, JSON.stringify(state.appointments));
-    localStorage.setItem(STORAGE_KEYS.products, JSON.stringify(state.products));
-    localStorage.setItem(STORAGE_KEYS.clients, JSON.stringify(state.clients));
-    localStorage.setItem(STORAGE_KEYS.sales, JSON.stringify(state.sales));
+function normalizeText(value) {
+    return String(value ?? "").trim();
+}
+
+function toNumber(value) {
+    const numeric = Number(String(value ?? "").replace(",", "."));
+    return Number.isFinite(numeric) ? numeric : 0;
+}
+
+function jsonHeaders() {
+    return {
+        "Content-Type": "text/plain;charset=utf-8"
+    };
+}
+
+async function apiGet(action) {
+    const response = await fetch(`${API_BASE_URL}?action=${encodeURIComponent(action)}`);
+    return response.json();
+}
+
+async function apiPost(action, payload = {}) {
+    const response = await fetch(API_BASE_URL, {
+        method: "POST",
+        headers: jsonHeaders(),
+        body: JSON.stringify({
+            action,
+            ...payload
+        })
+    });
+
+    return response.json();
+}
+
+function getListActionBySheet(sheetName) {
+    if (sheetName === SHEET_NAMES.appointments) return "appointments";
+    if (sheetName === SHEET_NAMES.products) return "products";
+    if (sheetName === SHEET_NAMES.clients) return "clients";
+    if (sheetName === SHEET_NAMES.sales) return "sales";
+    throw new Error("Sheet não mapeada.");
+}
+
+async function listSheet(sheetName) {
+    const action = getListActionBySheet(sheetName);
+    const result = await apiGet(action);
+
+    if (result.error) {
+        throw new Error(result.error);
+    }
+
+    return result;
+}
+
+async function createSheetRow(sheetName, data) {
+    const result = await apiPost("create", {
+        sheet: sheetName,
+        data
+    });
+
+    if (result.error) {
+        throw new Error(result.error);
+    }
+
+    return result;
+}
+
+async function updateSheetRow(sheetName, id, data) {
+    const result = await apiPost("update", {
+        sheet: sheetName,
+        id,
+        data
+    });
+
+    if (result.error) {
+        throw new Error(result.error);
+    }
+
+    return result;
+}
+
+async function deleteSheetRow(sheetName, id) {
+    const result = await apiPost("delete", {
+        sheet: sheetName,
+        id
+    });
+
+    if (result.error) {
+        throw new Error(result.error);
+    }
+
+    return result;
 }
 
 function setAuth(email) {
@@ -183,7 +273,7 @@ function handleLogin(event) {
         setAuth(email);
         el.loginForm.reset();
         updateAuthView();
-        renderAll();
+        initializeAppData();
         return;
     }
 
@@ -233,10 +323,6 @@ function handleResponsiveSidebar() {
     }
 }
 
-function generateId() {
-    return `${Date.now()}${Math.floor(Math.random() * 1000)}`;
-}
-
 function formatCurrency(value) {
     return Number(value).toLocaleString("pt-BR", {
         style: "currency",
@@ -246,7 +332,7 @@ function formatCurrency(value) {
 
 function formatDateTime(dateString) {
     const date = new Date(dateString);
-    if (Number.isNaN(date.getTime())) return "Data inválida";
+    if (Number.isNaN(date.getTime())) return normalizeText(dateString) || "Data inválida";
 
     return date.toLocaleString("pt-BR", {
         dateStyle: "short",
@@ -256,8 +342,7 @@ function formatDateTime(dateString) {
 }
 
 function getInitials(name) {
-    return name
-        .trim()
+    return normalizeText(name)
         .split(" ")
         .filter(Boolean)
         .slice(0, 2)
@@ -268,6 +353,8 @@ function getInitials(name) {
 function isToday(dateString) {
     const date = new Date(dateString);
     const today = new Date();
+
+    if (Number.isNaN(date.getTime())) return false;
 
     return (
         date.getDate() === today.getDate() &&
@@ -487,18 +574,12 @@ function animateCount(element, endValue, { duration = 700, isCurrency = false } 
     requestAnimationFrame(update);
 }
 
-function getTodayCompletedAppointments() {
-    return state.appointments.filter((item) => item.status === "completed" && item.completedAt && isToday(item.completedAt));
-}
-
 function getTodaySales() {
     return state.sales.filter((item) => isToday(item.date));
 }
 
 function getTodayRevenue() {
-    const serviceRevenue = getTodayCompletedAppointments().reduce((sum, item) => sum + Number(item.value), 0);
-    const salesRevenue = getTodaySales().reduce((sum, item) => sum + Number(item.total), 0);
-    return serviceRevenue + salesRevenue;
+    return getTodaySales().reduce((sum, item) => sum + Number(item.total), 0);
 }
 
 function getTodayProductsSoldCount() {
@@ -506,7 +587,7 @@ function getTodayProductsSoldCount() {
 }
 
 function getTodayTransactionsCount() {
-    return getTodayCompletedAppointments().length + getTodaySales().length;
+    return getTodaySales().length;
 }
 
 function getLowStockProducts() {
@@ -514,7 +595,7 @@ function getLowStockProducts() {
 }
 
 function renderDashboard() {
-    const pendingToday = state.appointments.filter((item) => isToday(item.date) && item.status !== "completed");
+    const pendingToday = state.appointments.filter((item) => isToday(item.date));
     const lowStock = getLowStockProducts();
     const todayRevenue = getTodayRevenue();
     const totalTransactions = getTodayTransactionsCount();
@@ -535,7 +616,7 @@ function renderDashboard() {
 
 function renderDashboardAppointments(items) {
     if (items.length === 0) {
-        el.dashboardAppointments.innerHTML = `<div class="empty-state">Nenhum atendimento pendente para hoje.</div>`;
+        el.dashboardAppointments.innerHTML = `<div class="empty-state">Nenhum atendimento para hoje.</div>`;
         return;
     }
 
@@ -580,14 +661,6 @@ function getRevenueDataLast7Days() {
 
         const label = baseDate.toLocaleDateString("pt-BR", { weekday: "short" });
 
-        const serviceRevenue = state.appointments
-            .filter((item) => item.status === "completed" && item.completedAt)
-            .filter((item) => {
-                const d = new Date(item.completedAt);
-                return d.getDate() === baseDate.getDate() && d.getMonth() === baseDate.getMonth() && d.getFullYear() === baseDate.getFullYear();
-            })
-            .reduce((sum, item) => sum + Number(item.value), 0);
-
         const salesRevenue = state.sales
             .filter((item) => {
                 const d = new Date(item.date);
@@ -597,7 +670,7 @@ function getRevenueDataLast7Days() {
 
         result.push({
             label: label.charAt(0).toUpperCase() + label.slice(1).replace(".", ""),
-            total: serviceRevenue + salesRevenue
+            total: salesRevenue
         });
     }
 
@@ -704,6 +777,71 @@ function drawRoundedRect(ctx, x, y, width, height, radius, fillStyle) {
     ctx.fill();
 }
 
+async function loadAppointments() {
+    const rows = await listSheet(SHEET_NAMES.appointments);
+
+    state.appointments = rows.map((item) => ({
+        id: normalizeText(item.ID),
+        client: normalizeText(item["NOME CLIENTE"]),
+        service: normalizeText(item["SERVIÇO"]),
+        professional: normalizeText(item.PROFISSIONAL),
+        value: toNumber(item.VALOR),
+        date: normalizeText(item["DATA E HORA"])
+    }));
+}
+
+async function loadProducts() {
+    const rows = await listSheet(SHEET_NAMES.products);
+
+    state.products = rows.map((item) => ({
+        id: normalizeText(item.ID),
+        name: normalizeText(item.PRODUTO),
+        quantity: toNumber(item.QUANTIDADE),
+        price: toNumber(item["PREÇO"])
+    }));
+}
+
+async function loadClients() {
+    const rows = await listSheet(SHEET_NAMES.clients);
+
+    state.clients = rows.map((item) => ({
+        id: normalizeText(item.ID),
+        name: normalizeText(item.NOME),
+        phone: normalizeText(item.TELEFONE),
+        email: normalizeText(item["E-MAIL"])
+    }));
+}
+
+async function loadSales() {
+    const rows = await listSheet(SHEET_NAMES.sales);
+
+    state.sales = rows.map((item) => ({
+        id: normalizeText(item.ID),
+        productName: normalizeText(item.PRODUTO),
+        customer: normalizeText(item.CLIENTE),
+        quantity: toNumber(item.QUANTIDADE),
+        unitPrice: toNumber(item["PREÇO UNITÁRIO"]),
+        total: toNumber(item.TOTAL),
+        date: normalizeText(item.DATA)
+    }));
+}
+
+async function initializeAppData() {
+    try {
+        await Promise.all([
+            loadAppointments(),
+            loadProducts(),
+            loadClients(),
+            loadSales()
+        ]);
+
+        renderAll();
+    } catch (error) {
+        console.error(error);
+        alert("Erro ao carregar dados do Google Sheets. Verifique os cabeçalhos das abas e a implantação do Apps Script.");
+    }
+}
+
 function openAppointmentCreateModal() {
     resetAppointmentForm();
     openModal(el.appointmentModal);
@@ -728,7 +866,7 @@ function editAppointment(id) {
     openModal(el.appointmentModal);
 }
 
-function saveAppointment(event) {
+async function saveAppointment(event) {
     event.preventDefault();
 
     const dateTime = buildAppointmentISODateTime();
@@ -738,37 +876,42 @@ function saveAppointment(event) {
         return;
     }
 
-    const payload = {
-        id: state.editingAppointmentId || generateId(),
-        client: el.appointmentClient.value.trim(),
-        service: el.appointmentService.value.trim(),
-        professional: el.appointmentProfessional.value,
-        date: dateTime,
-        value: Number(el.appointmentValue.value),
-        status: "scheduled",
-        completedAt: null
+    const data = {
+        "NOME CLIENTE": el.appointmentClient.value.trim(),
+        "SERVIÇO": el.appointmentService.value.trim(),
+        "PROFISSIONAL": el.appointmentProfessional.value,
+        "VALOR": Number(el.appointmentValue.value),
+        "DATA E HORA": dateTime
     };
 
-    if (state.editingAppointmentId) {
-        const old = state.appointments.find((a) => a.id === state.editingAppointmentId);
-        payload.status = old.status;
-        payload.completedAt = old.completedAt;
-        state.appointments = state.appointments.map((item) => item.id === state.editingAppointmentId ? payload : item);
-    } else {
-        state.appointments.push(payload);
-    }
+    try {
+        if (state.editingAppointmentId) {
+            await updateSheetRow(SHEET_NAMES.appointments, state.editingAppointmentId, data);
+        } else {
+            await createSheetRow(SHEET_NAMES.appointments, data);
+        }
 
-    persistData();
-    renderAll();
-    resetAppointmentForm();
-    closeModal(el.appointmentModal);
+        await loadAppointments();
+        renderAll();
+        resetAppointmentForm();
+        closeModal(el.appointmentModal);
+    } catch (error) {
+        console.error(error);
+        alert("Não foi possível salvar o agendamento.");
+    }
 }
 
-function deleteAppointment(id) {
+async function deleteAppointment(id) {
     if (!confirm("Deseja realmente excluir este agendamento?")) return;
-    state.appointments = state.appointments.filter((item) => item.id !== id);
-    persistData();
-    renderAll();
+
+    try {
+        await deleteSheetRow(SHEET_NAMES.appointments, id);
+        await loadAppointments();
+        renderAll();
+    } catch (error) {
+        console.error(error);
+        alert("Não foi possível excluir o agendamento.");
+    }
 }
 
 function openFinishAppointmentModal(id) {
@@ -788,19 +931,32 @@ function openFinishAppointmentModal(id) {
     openModal(el.finishAppointmentModal);
 }
 
-function finishAppointment() {
+async function finishAppointment() {
     if (!state.selectedAppointmentId) return;
 
     const appointment = state.appointments.find((item) => item.id === state.selectedAppointmentId);
-    if (!appointment || appointment.status === "completed") return;
+    if (!appointment) return;
 
-    appointment.status = "completed";
-    appointment.completedAt = new Date().toISOString();
+    try {
+        await createSheetRow(SHEET_NAMES.sales, {
+            "PRODUTO": appointment.service,
+            "CLIENTE": appointment.client,
+            "QUANTIDADE": 1,
+            "PREÇO UNITÁRIO": Number(appointment.value),
+            "TOTAL": Number(appointment.value),
+            "DATA": new Date().toISOString()
+        });
 
-    persistData();
-    renderAll();
-    closeModal(el.finishAppointmentModal);
-    state.selectedAppointmentId = null;
+        await deleteSheetRow(SHEET_NAMES.appointments, appointment.id);
+
+        await Promise.all([loadAppointments(), loadSales()]);
+        renderAll();
+        closeModal(el.finishAppointmentModal);
+        state.selectedAppointmentId = null;
+    } catch (error) {
+        console.error(error);
+        alert("Não foi possível encerrar o atendimento.");
+    }
 }
 
 function renderAppointments(filteredAppointments = state.appointments) {
@@ -840,15 +996,14 @@ function renderAppointments(filteredAppointments = state.appointments) {
           </div>
           <div class="appointment-meta-item">
             <i data-lucide="badge-info"></i>
-            <span>${item.status === "completed" ? "Atendimento encerrado" : "Aguardando atendimento"}</span>
+            <span>Agendado</span>
           </div>
         </div>
 
         <div class="table-actions">
-          ${item.status !== "completed" ? `
-            <button class="icon-btn success" onclick="openFinishAppointmentModal('${item.id}')" title="Encerrar atendimento">
-              <i data-lucide="check"></i>
-            </button>` : ""}
+          <button class="icon-btn success" onclick="openFinishAppointmentModal('${item.id}')" title="Encerrar atendimento">
+            <i data-lucide="check"></i>
+          </button>
           <button class="icon-btn edit" onclick="editAppointment('${item.id}')" title="Editar agendamento">
             <i data-lucide="pencil"></i>
           </button>
@@ -875,27 +1030,31 @@ function filterAppointments() {
     );
 }
 
-function saveProduct(event) {
+async function saveProduct(event) {
     event.preventDefault();
 
     const id = el.productId.value.trim();
-    const payload = {
-        id: id || generateId(),
-        name: el.productName.value.trim(),
-        quantity: Number(el.productQuantity.value),
-        price: Number(el.productPrice.value)
+    const data = {
+        "PRODUTO": el.productName.value.trim(),
+        "QUANTIDADE": Number(el.productQuantity.value),
+        "PREÇO": Number(el.productPrice.value)
     };
 
-    if (id) {
-        state.products = state.products.map((item) => item.id === id ? payload : item);
-    } else {
-        state.products.push(payload);
-    }
+    try {
+        if (id) {
+            await updateSheetRow(SHEET_NAMES.products, id, data);
+        } else {
+            await createSheetRow(SHEET_NAMES.products, data);
+        }
 
-    persistData();
-    renderAll();
-    resetProductForm();
-    closeModal(el.productModal);
+        await loadProducts();
+        renderAll();
+        resetProductForm();
+        closeModal(el.productModal);
+    } catch (error) {
+        console.error(error);
+        alert("Não foi possível salvar o produto.");
+    }
 }
 
 function editProduct(id) {
@@ -913,12 +1072,18 @@ function editProduct(id) {
     openModal(el.productModal);
 }
 
-function deleteProduct(id) {
+async function deleteProduct(id) {
     if (!confirm("Deseja realmente excluir este produto?")) return;
-    state.products = state.products.filter((item) => item.id !== id);
-    persistData();
-    renderAll();
-    resetProductForm();
+
+    try {
+        await deleteSheetRow(SHEET_NAMES.products, id);
+        await loadProducts();
+        renderAll();
+        resetProductForm();
+    } catch (error) {
+        console.error(error);
+        alert("Não foi possível excluir o produto.");
+    }
 }
 
 function getStockStatus(quantity) {
@@ -957,27 +1122,37 @@ function renderProducts() {
     renderLucideIcons();
 }
 
-function saveClient(event) {
+async function saveClient(event) {
     event.preventDefault();
 
-    state.clients.push({
-        id: generateId(),
-        name: el.clientName.value.trim(),
-        phone: el.clientPhone.value.trim(),
-        email: el.clientEmail.value.trim()
-    });
+    try {
+        await createSheetRow(SHEET_NAMES.clients, {
+            "NOME": el.clientName.value.trim(),
+            "TELEFONE": el.clientPhone.value.trim(),
+            "E-MAIL": el.clientEmail.value.trim()
+        });
 
-    persistData();
-    renderAll();
-    resetClientForm();
-    closeModal(el.clientModal);
+        await loadClients();
+        renderAll();
+        resetClientForm();
+        closeModal(el.clientModal);
+    } catch (error) {
+        console.error(error);
+        alert("Não foi possível salvar o cliente.");
+    }
 }
 
-function deleteClient(id) {
+async function deleteClient(id) {
     if (!confirm("Deseja realmente apagar este cliente?")) return;
-    state.clients = state.clients.filter((item) => item.id !== id);
-    persistData();
-    renderAll();
+
+    try {
+        await deleteSheetRow(SHEET_NAMES.clients, id);
+        await loadClients();
+        renderAll();
+    } catch (error) {
+        console.error(error);
+        alert("Não foi possível apagar o cliente.");
+    }
 }
 
 function renderClients(filteredClients = state.clients) {
@@ -1043,10 +1218,16 @@ function editSale(id) {
     const sale = state.sales.find((item) => item.id === id);
     if (!sale) return;
 
+    const product = state.products.find((item) => item.name === sale.productName);
+    if (!product) {
+        alert("O produto desta venda não existe mais no cadastro.");
+        return;
+    }
+
     state.editingSaleId = id;
     el.saleId.value = sale.id;
     populateSaleProducts();
-    el.saleProduct.value = sale.productId;
+    el.saleProduct.value = product.id;
     el.saleCustomer.value = sale.customer;
     el.saleQuantity.value = sale.quantity;
     el.saleUnitPrice.value = Number(sale.unitPrice).toFixed(2);
@@ -1058,21 +1239,33 @@ function editSale(id) {
     openModal(el.saleModal);
 }
 
-function deleteSale(id) {
+async function deleteSale(id) {
     if (!confirm("Deseja realmente excluir esta venda?")) return;
 
-    const sale = state.sales.find((item) => item.id === id);
-    if (sale) {
-        const product = state.products.find((item) => item.id === sale.productId);
-        if (product) product.quantity += Number(sale.quantity);
-    }
+    try {
+        const sale = state.sales.find((item) => item.id === id);
 
-    state.sales = state.sales.filter((item) => item.id !== id);
-    persistData();
-    renderAll();
+        if (sale) {
+            const product = state.products.find((item) => item.name === sale.productName);
+            if (product) {
+                await updateSheetRow(SHEET_NAMES.products, product.id, {
+                    "PRODUTO": product.name,
+                    "QUANTIDADE": Number(product.quantity) + Number(sale.quantity),
+                    "PREÇO": Number(product.price)
+                });
+            }
+        }
+
+        await deleteSheetRow(SHEET_NAMES.sales, id);
+        await Promise.all([loadProducts(), loadSales()]);
+        renderAll();
+    } catch (error) {
+        console.error(error);
+        alert("Não foi possível excluir a venda.");
+    }
 }
 
-function saveSale(event) {
+async function saveSale(event) {
     event.preventDefault();
 
     const product = state.products.find((item) => item.id === el.saleProduct.value);
@@ -1089,58 +1282,86 @@ function saveSale(event) {
         return;
     }
 
-    if (state.editingSaleId) {
-        const oldSale = state.sales.find((item) => item.id === state.editingSaleId);
-        if (!oldSale) return;
+    try {
+        if (state.editingSaleId) {
+            const oldSale = state.sales.find((item) => item.id === state.editingSaleId);
+            if (!oldSale) return;
 
-        const oldProduct = state.products.find((item) => item.id === oldSale.productId);
-        if (oldProduct) oldProduct.quantity += Number(oldSale.quantity);
+            const oldProduct = state.products.find((item) => item.name === oldSale.productName);
+            let availableStock = Number(product.quantity);
 
-        if (quantity > Number(product.quantity)) {
-            if (oldProduct) oldProduct.quantity -= Number(oldSale.quantity);
-            alert("Quantidade maior que o estoque disponível.");
-            return;
-        }
+            if (oldProduct && oldProduct.id === product.id) {
+                availableStock += Number(oldSale.quantity);
+            }
 
-        product.quantity -= quantity;
+            if (quantity > availableStock) {
+                alert("Quantidade maior que o estoque disponível.");
+                return;
+            }
 
-        state.sales = state.sales.map((item) =>
-            item.id === state.editingSaleId
-                ? {
-                    ...item,
-                    productId: product.id,
-                    productName: product.name,
-                    customer: el.saleCustomer.value.trim() || "Cliente avulso",
-                    quantity,
-                    unitPrice,
-                    total: quantity * unitPrice
+            if (oldProduct) {
+                const restoredQty = oldProduct.id === product.id
+                    ? availableStock - quantity
+                    : Number(oldProduct.quantity) + Number(oldSale.quantity);
+
+                await updateSheetRow(SHEET_NAMES.products, oldProduct.id, {
+                    "PRODUTO": oldProduct.name,
+                    "QUANTIDADE": restoredQty,
+                    "PREÇO": Number(oldProduct.price)
+                });
+            }
+
+            if (product.id !== (oldProduct?.id || "")) {
+                if (quantity > Number(product.quantity)) {
+                    alert("Quantidade maior que o estoque disponível.");
+                    return;
                 }
-                : item
-        );
-    } else {
-        if (quantity > Number(product.quantity)) {
-            alert("Quantidade maior que o estoque disponível.");
-            return;
+
+                await updateSheetRow(SHEET_NAMES.products, product.id, {
+                    "PRODUTO": product.name,
+                    "QUANTIDADE": Number(product.quantity) - quantity,
+                    "PREÇO": Number(product.price)
+                });
+            }
+
+            await updateSheetRow(SHEET_NAMES.sales, state.editingSaleId, {
+                "PRODUTO": product.name,
+                "CLIENTE": el.saleCustomer.value.trim() || "Cliente avulso",
+                "QUANTIDADE": quantity,
+                "PREÇO UNITÁRIO": unitPrice,
+                "TOTAL": quantity * unitPrice,
+                "DATA": oldSale.date
+            });
+        } else {
+            if (quantity > Number(product.quantity)) {
+                alert("Quantidade maior que o estoque disponível.");
+                return;
+            }
+
+            await createSheetRow(SHEET_NAMES.sales, {
+                "PRODUTO": product.name,
+                "CLIENTE": el.saleCustomer.value.trim() || "Cliente avulso",
+                "QUANTIDADE": quantity,
+                "PREÇO UNITÁRIO": unitPrice,
+                "TOTAL": quantity * unitPrice,
+                "DATA": new Date().toISOString()
+            });
+
+            await updateSheetRow(SHEET_NAMES.products, product.id, {
+                "PRODUTO": product.name,
+                "QUANTIDADE": Number(product.quantity) - quantity,
+                "PREÇO": Number(product.price)
+            });
         }
 
-        product.quantity -= quantity;
-
-        state.sales.push({
-            id: generateId(),
-            productId: product.id,
-            productName: product.name,
-            customer: el.saleCustomer.value.trim() || "Cliente avulso",
-            quantity,
-            unitPrice,
-            total: quantity * unitPrice,
-            date: new Date().toISOString()
-        });
+        await Promise.all([loadProducts(), loadSales()]);
+        renderAll();
+        resetSaleForm();
+        closeModal(el.saleModal);
+    } catch (error) {
+        console.error(error);
+        alert("Não foi possível salvar a venda.");
     }
-
-    persistData();
-    renderAll();
-    resetSaleForm();
-    closeModal(el.saleModal);
 }
 
 function renderSales(filteredSales = state.sales) {
@@ -1185,56 +1406,6 @@ function filterSales() {
             item.customer.toLowerCase().includes(searchTerm)
         )
     );
-}
-
-function seedInitialData() {
-    const hasAnyData =
-        state.appointments.length ||
-        state.products.length ||
-        state.clients.length ||
-        state.sales.length;
-
-    if (hasAnyData) return;
-
-    state.products = [
-        { id: generateId(), name: "Shampoo Hidratante", quantity: 8, price: 59.9 },
-        { id: generateId(), name: "Máscara Capilar Premium", quantity: 3, price: 89.9 },
-        { id: generateId(), name: "Óleo Finalizador", quantity: 12, price: 45.5 }
-    ];
-
-    state.clients = [
-        { id: generateId(), name: "Ana Souza", phone: "(85) 99999-1111", email: "ana@email.com" },
-        { id: generateId(), name: "Juliana Lima", phone: "(85) 99999-2222", email: "juliana@email.com" }
-    ];
-
-    const now = new Date();
-    const date1 = new Date(now.getTime() + 60 * 60 * 1000);
-    const date2 = new Date(now.getTime() + 3 * 60 * 60 * 1000);
-
-    state.appointments = [
-        {
-            id: generateId(),
-            client: "Ana Souza",
-            service: "Escova Modelada",
-            professional: "Camila",
-            date: `${date1.getFullYear()}-${String(date1.getMonth() + 1).padStart(2, "0")}-${String(date1.getDate()).padStart(2, "0")}T${String(date1.getHours()).padStart(2, "0")}:${String(date1.getMinutes()).padStart(2, "0")}`,
-            value: 90,
-            status: "scheduled",
-            completedAt: null
-        },
-        {
-            id: generateId(),
-            client: "Juliana Lima",
-            service: "Hidratação",
-            professional: "Renata",
-            date: `${date2.getFullYear()}-${String(date2.getMonth() + 1).padStart(2, "0")}-${String(date2.getDate()).padStart(2, "0")}T${String(date2.getHours()).padStart(2, "0")}:${String(date2.getMinutes()).padStart(2, "0")}`,
-            value: 120,
-            status: "scheduled",
-            completedAt: null
-        }
-    ];
-
-    persistData();
 }
 
 function renderAll() {
@@ -1333,7 +1504,6 @@ window.addEventListener("resize", () => {
 });
 
 function init() {
-    seedInitialData();
     populateDateAndTimeFields();
 
     [
@@ -1352,7 +1522,11 @@ function init() {
     updateAuthView();
     handleResponsiveSidebar();
     updateDateTimePreview();
-    renderAll();
+    renderLucideIcons();
+
+    if (isAuthenticated()) {
+        initializeAppData();
+    }
 }
 
 init();

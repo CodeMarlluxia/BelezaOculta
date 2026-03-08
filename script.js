@@ -75,6 +75,9 @@ const state = {
     editingAppointmentId: null,
     editingSaleId: null,
     chartAnimationFrame: null,
+    dashboardRenderFrame: null,
+    metricsCache: null,
+    revenueChartCache: [],
     lastTouched: {
         appointments: null,
         products: null,
@@ -350,7 +353,12 @@ function normalizeText(value) {
 }
 
 function toNumber(value) {
-    const numeric = Number(String(value ?? "").replace(",", "."));
+    const normalized = String(value ?? "")
+        .replace(/\s/g, "")
+        .replace(/[R$]/g, "")
+        .replace(/\./g, "")
+        .replace(",", ".");
+    const numeric = Number(normalized);
     return Number.isFinite(numeric) ? numeric : 0;
 }
 
@@ -374,11 +382,6 @@ function parseFlexibleDate(value) {
 
     const text = String(value).trim();
     if (!text) return null;
-
-    const direct = new Date(text);
-    if (!Number.isNaN(direct.getTime())) {
-        return direct;
-    }
 
     const brDateTime = text.match(/^(\d{2})\/(\d{2})\/(\d{4})(?:[\s,]+(\d{2}):(\d{2})(?::(\d{2}))?)?$/);
     if (brDateTime) {
@@ -404,6 +407,11 @@ function parseFlexibleDate(value) {
         if (!Number.isNaN(parsed.getTime())) return parsed;
     }
 
+    const direct = new Date(text);
+    if (!Number.isNaN(direct.getTime())) {
+        return direct;
+    }
+
     return null;
 }
 
@@ -413,6 +421,204 @@ function sameCalendarDay(dateA, dateB) {
         dateA.getMonth() === dateB.getMonth() &&
         dateA.getFullYear() === dateB.getFullYear()
     );
+}
+
+function addDays(baseDate, days) {
+    const nextDate = new Date(baseDate);
+    nextDate.setDate(nextDate.getDate() + days);
+    return nextDate;
+}
+
+function parseAppointmentFormPayload() {
+    const dateTime = buildAppointmentISODateTime();
+
+    if (!dateTime) {
+        throw new Error("Preencha corretamente a data e o horário.");
+    }
+
+    return {
+        "NOME CLIENTE": normalizeText(el.appointmentClient.value),
+        "SERVIÇO": normalizeText(el.appointmentService.value),
+        "PROFISSIONAL": normalizeText(el.appointmentProfessional.value),
+        "VALOR": toNumber(el.appointmentValue.value),
+        "DATA E HORA": dateTime
+    };
+}
+
+function appointmentFromPayload(id, data) {
+    return {
+        id: normalizeText(id),
+        client: normalizeText(data["NOME CLIENTE"]),
+        service: normalizeText(data["SERVIÇO"]),
+        professional: normalizeText(data["PROFISSIONAL"]),
+        value: toNumber(data["VALOR"]),
+        date: normalizeText(data["DATA E HORA"])
+    };
+}
+
+function productFromPayload(id, data) {
+    return {
+        id: normalizeText(id),
+        name: normalizeText(data["PRODUTO"]),
+        quantity: toInteger(data["QUANTIDADE"]),
+        price: toNumber(data["PREÇO"])
+    };
+}
+
+function clientFromPayload(id, data) {
+    return {
+        id: normalizeText(id),
+        name: normalizeText(data["NOME"]),
+        phone: normalizeText(data["TELEFONE"]),
+        email: normalizeText(data["E-MAIL"])
+    };
+}
+
+function saleFromPayload(id, data) {
+    return {
+        id: normalizeText(id),
+        productName: normalizeText(data["PRODUTO"]),
+        customer: normalizeText(data["CLIENTE"]),
+        quantity: toInteger(data["QUANTIDADE"]),
+        unitPrice: toNumber(data["PREÇO UNITÁRIO"]),
+        total: toNumber(data["TOTAL"]),
+        date: normalizeText(data["DATA"])
+    };
+}
+
+function upsertById(list, item) {
+    const index = list.findIndex((entry) => entry.id === item.id);
+
+    if (index === -1) {
+        list.unshift(item);
+        return;
+    }
+
+    list[index] = item;
+}
+
+function removeById(list, id) {
+    const index = list.findIndex((entry) => entry.id === id);
+    if (index !== -1) {
+        list.splice(index, 1);
+    }
+}
+
+function invalidateDashboardCache() {
+    state.metricsCache = null;
+    state.revenueChartCache = [];
+}
+
+function buildRevenueDataLast7Days() {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const dayMap = new Map();
+
+    for (const appointment of state.appointments) {
+        const appointmentDate = parseFlexibleDate(appointment.date);
+        if (!appointmentDate) continue;
+
+        appointmentDate.setHours(0, 0, 0, 0);
+        const key = appointmentDate.toISOString().slice(0, 10);
+        dayMap.set(key, (dayMap.get(key) || 0) + toNumber(appointment.value));
+    }
+
+    for (const sale of state.sales) {
+        const saleDate = parseFlexibleDate(sale.date);
+        if (!saleDate) continue;
+
+        saleDate.setHours(0, 0, 0, 0);
+        const key = saleDate.toISOString().slice(0, 10);
+        dayMap.set(key, (dayMap.get(key) || 0) + toNumber(sale.total));
+    }
+
+    const result = [];
+
+    for (let i = 6; i >= 0; i -= 1) {
+        const baseDate = addDays(today, -i);
+        const key = baseDate.toISOString().slice(0, 10);
+        const label = baseDate.toLocaleDateString("pt-BR", { weekday: "short" });
+
+        result.push({
+            label: label.charAt(0).toUpperCase() + label.slice(1).replace(".", ""),
+            total: toNumber(dayMap.get(key) || 0)
+        });
+    }
+
+    return result;
+}
+
+function computeDashboardMetrics() {
+    if (state.metricsCache) {
+        return state.metricsCache;
+    }
+
+    const now = new Date();
+    const todayAppointments = [];
+    let todayRevenue = 0;
+    let todayProductsSold = 0;
+    let totalTransactions = 0;
+    const lowStock = [];
+    const totalClients = state.clients.length;
+    const totalProducts = state.products.length;
+
+    for (const appointment of state.appointments) {
+        const appointmentDate = parseFlexibleDate(appointment.date);
+        if (appointmentDate && sameCalendarDay(appointmentDate, now)) {
+            todayAppointments.push(appointment);
+            todayRevenue += toNumber(appointment.value);
+        }
+    }
+
+    todayAppointments.sort((a, b) => {
+        const dateA = parseFlexibleDate(a.date);
+        const dateB = parseFlexibleDate(b.date);
+        if (!dateA && !dateB) return 0;
+        if (!dateA) return 1;
+        if (!dateB) return -1;
+        return dateA.getTime() - dateB.getTime();
+    });
+
+    for (const product of state.products) {
+        if (toNumber(product.quantity) <= LOW_STOCK_LIMIT) {
+            lowStock.push(product);
+        }
+    }
+
+    for (const sale of state.sales) {
+        const saleDate = parseFlexibleDate(sale.date);
+        if (saleDate && sameCalendarDay(saleDate, now)) {
+            todayRevenue += toNumber(sale.total);
+            todayProductsSold += toNumber(sale.quantity);
+            totalTransactions += 1;
+        }
+    }
+
+    state.revenueChartCache = buildRevenueDataLast7Days();
+    state.metricsCache = {
+        todayAppointments,
+        lowStock,
+        todayRevenue,
+        todayProductsSold,
+        totalTransactions,
+        averageTicket: totalTransactions ? todayRevenue / totalTransactions : 0,
+        totalClients,
+        totalProducts
+    };
+
+    return state.metricsCache;
+}
+
+function scheduleDashboardRender({ animateChart = true } = {}) {
+    if (state.dashboardRenderFrame) {
+        cancelAnimationFrame(state.dashboardRenderFrame);
+    }
+
+    state.dashboardRenderFrame = requestAnimationFrame(() => {
+        state.dashboardRenderFrame = null;
+        renderDashboard(animateChart);
+    });
 }
 
 async function parseJsonResponse(response) {
@@ -596,21 +802,25 @@ function mapSaleRow(item) {
 async function loadAppointments() {
     const rows = await listSheet(SHEET_NAMES.appointments);
     state.appointments = Array.isArray(rows) ? rows.map(mapAppointmentRow) : [];
+    invalidateDashboardCache();
 }
 
 async function loadProducts() {
     const rows = await listSheet(SHEET_NAMES.products);
     state.products = Array.isArray(rows) ? rows.map(mapProductRow) : [];
+    invalidateDashboardCache();
 }
 
 async function loadClients() {
     const rows = await listSheet(SHEET_NAMES.clients);
     state.clients = Array.isArray(rows) ? rows.map(mapClientRow) : [];
+    invalidateDashboardCache();
 }
 
 async function loadSales() {
     const rows = await listSheet(SHEET_NAMES.sales);
     state.sales = Array.isArray(rows) ? rows.map(mapSaleRow) : [];
+    invalidateDashboardCache();
 }
 
 async function initializeAppData() {
@@ -968,57 +1178,23 @@ function animateCount(element, endValue, { duration = 700, isCurrency = false } 
     requestAnimationFrame(update);
 }
 
-function getTodaySales() {
-    return state.sales.filter((item) => isToday(item.date));
-}
+function renderDashboard(animateChart = true) {
+    const metrics = computeDashboardMetrics();
 
-function getTodayRevenue() {
-    return getTodaySales().reduce((sum, item) => sum + Number(item.total), 0);
-}
+    animateCount(el.metricAppointments, metrics.todayAppointments.length);
+    animateCount(el.metricRevenue, metrics.todayRevenue, { isCurrency: true });
+    animateCount(el.metricLowStock, metrics.lowStock.length);
+    animateCount(el.metricClients, metrics.totalClients);
+    animateCount(el.metricProducts, metrics.totalProducts);
+    animateCount(el.metricAverageTicket, metrics.averageTicket, { isCurrency: true });
+    animateCount(el.metricProductsSold, metrics.todayProductsSold);
 
-function getTodayProductsSoldCount() {
-    return getTodaySales().reduce((sum, item) => sum + Number(item.quantity), 0);
-}
+    renderDashboardAppointments(metrics.todayAppointments);
+    renderDashboardLowStock(metrics.lowStock);
 
-function getTodayTransactionsCount() {
-    return getTodaySales().length;
-}
-
-function getLowStockProducts() {
-    return state.products.filter((item) => Number(item.quantity) <= LOW_STOCK_LIMIT);
-}
-
-function getTodayAppointments() {
-    return state.appointments
-        .filter((item) => isToday(item.date))
-        .sort((a, b) => {
-            const dateA = parseFlexibleDate(a.date);
-            const dateB = parseFlexibleDate(b.date);
-            if (!dateA && !dateB) return 0;
-            if (!dateA) return 1;
-            if (!dateB) return -1;
-            return dateA.getTime() - dateB.getTime();
-        });
-}
-
-function renderDashboard() {
-    const todayAppointments = getTodayAppointments();
-    const lowStock = getLowStockProducts();
-    const todayRevenue = getTodayRevenue();
-    const totalTransactions = getTodayTransactionsCount();
-    const averageTicket = totalTransactions ? todayRevenue / totalTransactions : 0;
-
-    animateCount(el.metricAppointments, todayAppointments.length);
-    animateCount(el.metricRevenue, todayRevenue, { isCurrency: true });
-    animateCount(el.metricLowStock, lowStock.length);
-    animateCount(el.metricClients, state.clients.length);
-    animateCount(el.metricProducts, state.products.length);
-    animateCount(el.metricAverageTicket, averageTicket, { isCurrency: true });
-    animateCount(el.metricProductsSold, getTodayProductsSoldCount());
-
-    renderDashboardAppointments(todayAppointments);
-    renderDashboardLowStock(lowStock);
-    renderRevenueChart(true);
+    requestAnimationFrame(() => {
+        renderRevenueChart(animateChart);
+    });
 }
 
 function renderDashboardAppointments(items) {
@@ -1055,43 +1231,25 @@ function renderDashboardLowStock(items) {
         .join("");
 }
 
-function getRevenueDataLast7Days() {
-    const result = [];
-    const today = new Date();
-
-    for (let i = 6; i >= 0; i -= 1) {
-        const baseDate = new Date(today);
-        baseDate.setHours(0, 0, 0, 0);
-        baseDate.setDate(today.getDate() - i);
-
-        const label = baseDate.toLocaleDateString("pt-BR", { weekday: "short" });
-
-        const salesRevenue = state.sales
-            .filter((item) => {
-                const d = parseFlexibleDate(item.date);
-                return d ? sameCalendarDay(d, baseDate) : false;
-            })
-            .reduce((sum, item) => sum + Number(item.total), 0);
-
-        result.push({
-            label: label.charAt(0).toUpperCase() + label.slice(1).replace(".", ""),
-            total: salesRevenue
-        });
-    }
-
-    return result;
-}
-
 function renderRevenueChart(animate = false) {
     const canvas = el.revenueChart;
     if (!canvas) return;
 
     const ctx = canvas.getContext("2d");
-    const data = getRevenueDataLast7Days();
+    const data = state.revenueChartCache.length ? state.revenueChartCache : buildRevenueDataLast7Days();
     const parent = canvas.parentElement;
     const width = parent.clientWidth;
     const height = window.innerWidth <= 640 ? 190 : window.innerWidth <= 991 ? 220 : 240;
     const dpr = window.devicePixelRatio || 1;
+    const theme = document.documentElement.getAttribute("data-theme");
+    const rootStyle = getComputedStyle(document.documentElement);
+
+    const textSoft = rootStyle.getPropertyValue("--text-soft").trim() || "#81638b";
+    const strongPrimary = rootStyle.getPropertyValue("--mocha").trim() || "#503459";
+    const mediumPrimary = rootStyle.getPropertyValue("--rose-gold").trim() || "#81638b";
+    const softPrimary = rootStyle.getPropertyValue("--rose-gold-soft").trim() || "#b695c0";
+    const baseLineColor = theme === "dark" ? "rgba(216, 197, 221, 0.26)" : "rgba(129, 99, 139, 0.20)";
+    const valueTextColor = theme === "dark" ? "#f7eef9" : strongPrimary;
 
     canvas.width = width * dpr;
     canvas.height = height * dpr;
@@ -1101,7 +1259,7 @@ function renderRevenueChart(animate = false) {
     const padding = { top: 20, right: 20, bottom: 35, left: 20 };
     const chartWidth = width - padding.left - padding.right;
     const chartHeight = height - padding.top - padding.bottom;
-    const maxValue = Math.max(...data.map((item) => item.total), 100);
+    const maxValue = Math.max(...data.map((item) => toNumber(item.total)), 100);
     const barWidth = Math.max((chartWidth / data.length) - 12, 18);
 
     if (state.chartAnimationFrame) {
@@ -1114,36 +1272,39 @@ function renderRevenueChart(animate = false) {
         ctx.clearRect(0, 0, width, height);
 
         ctx.beginPath();
-        ctx.strokeStyle = document.documentElement.getAttribute("data-theme") === "dark"
-            ? "rgba(212, 189, 178, 0.18)"
-            : "rgba(145, 116, 106, 0.22)";
+        ctx.strokeStyle = baseLineColor;
         ctx.lineWidth = 1;
         ctx.moveTo(padding.left, padding.top + chartHeight);
         ctx.lineTo(width - padding.right, padding.top + chartHeight);
         ctx.stroke();
 
         data.forEach((item, index) => {
+            const numericTotal = toNumber(item.total);
             const x = padding.left + index * (barWidth + 12) + 6;
-            const targetHeight = (item.total / maxValue) * (chartHeight - 15);
+            const targetHeight = (numericTotal / maxValue) * (chartHeight - 15);
             const barHeight = targetHeight * progress;
             const y = padding.top + chartHeight - barHeight;
 
             const gradient = ctx.createLinearGradient(0, y, 0, padding.top + chartHeight);
 
-            if (document.documentElement.getAttribute("data-theme") === "dark") {
-                gradient.addColorStop(0, "rgba(216,194,176,0.95)");
-                gradient.addColorStop(1, "rgba(201,160,143,0.42)");
+            if (theme === "dark") {
+                gradient.addColorStop(0, softPrimary);
+                gradient.addColorStop(0.55, mediumPrimary);
+                gradient.addColorStop(1, "rgba(80, 52, 89, 0.34)");
             } else {
-                gradient.addColorStop(0, "rgba(207,161,141,0.95)");
-                gradient.addColorStop(1, "rgba(239,225,210,0.45)");
+                gradient.addColorStop(0, strongPrimary);
+                gradient.addColorStop(0.58, mediumPrimary);
+                gradient.addColorStop(1, "rgba(182, 149, 192, 0.38)");
             }
 
             drawRoundedRect(ctx, x, y, barWidth, Math.max(barHeight, 8), 10, gradient);
 
-            ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--text-soft").trim() || "#8b6f65";
+            ctx.fillStyle = valueTextColor;
             ctx.font = window.innerWidth <= 640 ? "11px Segoe UI" : "12px Segoe UI";
             ctx.textAlign = "center";
-            ctx.fillText(progress > 0.98 && item.total > 0 ? `R$ ${item.total.toFixed(0)}` : "-", x + barWidth / 2, y - 8);
+            ctx.fillText(progress > 0.98 && numericTotal > 0 ? `R$ ${numericTotal.toFixed(0)}` : "-", x + barWidth / 2, y - 8);
+
+            ctx.fillStyle = textSoft;
             ctx.fillText(item.label, x + barWidth / 2, padding.top + chartHeight + 18);
         });
     }
@@ -1211,41 +1372,23 @@ function editAppointment(id) {
     openModal(el.appointmentModal);
 }
 
-function renderAppointmentSection() {
+function renderAppointmentSection({ animateChart = false } = {}) {
     renderAppointments();
-    renderDashboard();
+    scheduleDashboardRender({ animateChart });
     renderLucideIcons();
-}
-
-function getLastAppointmentByPayload(data) {
-    return [...state.appointments]
-        .reverse()
-        .find((item) =>
-            item.client === data["NOME CLIENTE"] &&
-            item.service === data["SERVIÇO"] &&
-            item.professional === data["PROFISSIONAL"] &&
-            Number(item.value) === Number(data["VALOR"]) &&
-            item.date === data["DATA E HORA"]
-        );
 }
 
 async function saveAppointment(event) {
     event.preventDefault();
 
-    const dateTime = buildAppointmentISODateTime();
+    let data;
 
-    if (!dateTime) {
-        alert("Preencha corretamente a data e o horário.");
+    try {
+        data = parseAppointmentFormPayload();
+    } catch (validationError) {
+        alert(validationError.message);
         return;
     }
-
-    const data = {
-        "NOME CLIENTE": normalizeText(el.appointmentClient.value),
-        "SERVIÇO": normalizeText(el.appointmentService.value),
-        "PROFISSIONAL": normalizeText(el.appointmentProfessional.value),
-        "VALOR": toNumber(el.appointmentValue.value),
-        "DATA E HORA": dateTime
-    };
 
     const isEditing = Boolean(state.editingAppointmentId);
 
@@ -1253,20 +1396,19 @@ async function saveAppointment(event) {
         await withProcessing(el.appointmentSubmitBtn, "Salvando...", async () => {
             if (isEditing) {
                 await updateSheetRow(SHEET_NAMES.appointments, state.editingAppointmentId, data);
+
+                const updatedAppointment = appointmentFromPayload(state.editingAppointmentId, data);
+                upsertById(state.appointments, updatedAppointment);
+                markRecentlyTouched("appointments", updatedAppointment.id);
             } else {
-                await createSheetRow(SHEET_NAMES.appointments, data);
+                const result = await createSheetRow(SHEET_NAMES.appointments, data);
+                const createdAppointment = appointmentFromPayload(result.id, data);
+                upsertById(state.appointments, createdAppointment);
+                markRecentlyTouched("appointments", createdAppointment.id);
             }
 
-            await loadAppointments();
-
-            if (isEditing) {
-                markRecentlyTouched("appointments", state.editingAppointmentId);
-            } else {
-                const created = getLastAppointmentByPayload(data);
-                if (created) markRecentlyTouched("appointments", created.id);
-            }
-
-            renderAppointmentSection();
+            invalidateDashboardCache();
+            renderAppointmentSection({ animateChart: true });
             resetAppointmentForm();
             closeModal(el.appointmentModal);
         }, {
@@ -1290,8 +1432,11 @@ async function deleteAppointment(id) {
     try {
         const toastId = showFeedbackToastLoading("Excluindo agendamento", "Aguarde enquanto a exclusão é processada.");
         await deleteSheetRow(SHEET_NAMES.appointments, id);
-        await loadAppointments();
-        renderAppointmentSection();
+
+        removeById(state.appointments, id);
+        invalidateDashboardCache();
+        renderAppointmentSection({ animateChart: true });
+
         showFeedbackToastSuccess(toastId, "Agendamento excluído", "O registro foi removido com sucesso.");
     } catch (error) {
         console.error(error);
@@ -1323,37 +1468,30 @@ async function finishAppointment() {
     const appointment = state.appointments.find((item) => item.id === state.selectedAppointmentId);
     if (!appointment) return;
 
+    const salePayload = {
+        "PRODUTO": appointment.service,
+        "CLIENTE": appointment.client,
+        "QUANTIDADE": 1,
+        "PREÇO UNITÁRIO": Number(appointment.value),
+        "TOTAL": Number(appointment.value),
+        "DATA": new Date().toISOString()
+    };
+
     try {
         await withProcessing(el.confirmFinishAppointmentBtn, "Encerrando...", async () => {
-            await createSheetRow(SHEET_NAMES.sales, {
-                "PRODUTO": appointment.service,
-                "CLIENTE": appointment.client,
-                "QUANTIDADE": 1,
-                "PREÇO UNITÁRIO": Number(appointment.value),
-                "TOTAL": Number(appointment.value),
-                "DATA": new Date().toISOString()
-            });
-
+            const saleResult = await createSheetRow(SHEET_NAMES.sales, salePayload);
             await deleteSheetRow(SHEET_NAMES.appointments, appointment.id);
 
-            await Promise.all([loadAppointments(), loadSales()]);
+            const createdSale = saleFromPayload(saleResult.id, salePayload);
+            upsertById(state.sales, createdSale);
+            removeById(state.appointments, appointment.id);
 
-            const createdSale = [...state.sales]
-                .reverse()
-                .find((item) =>
-                    item.productName === appointment.service &&
-                    item.customer === appointment.client &&
-                    Number(item.quantity) === 1 &&
-                    Number(item.total) === Number(appointment.value)
-                );
+            markRecentlyTouched("sales", createdSale.id);
+            invalidateDashboardCache();
 
-            if (createdSale) {
-                markRecentlyTouched("sales", createdSale.id);
-            }
-
-            renderDashboard();
             renderAppointments();
             renderSales();
+            scheduleDashboardRender({ animateChart: true });
             closeModal(el.finishAppointmentModal);
             state.selectedAppointmentId = null;
         }, {
@@ -1447,10 +1585,10 @@ function filterAppointments() {
     );
 }
 
-function renderProductSection() {
+function renderProductSection({ animateChart = false } = {}) {
     renderProducts();
-    renderDashboard();
     populateSaleProducts();
+    scheduleDashboardRender({ animateChart });
     renderLucideIcons();
 }
 
@@ -1468,27 +1606,17 @@ async function saveProduct(event) {
         await withProcessing(el.productSubmitBtn, "Salvando...", async () => {
             if (id) {
                 await updateSheetRow(SHEET_NAMES.products, id, data);
-            } else {
-                await createSheetRow(SHEET_NAMES.products, data);
-            }
-
-            await loadProducts();
-
-            if (id) {
+                upsertById(state.products, productFromPayload(id, data));
                 markRecentlyTouched("products", id);
             } else {
-                const createdProduct = [...state.products]
-                    .reverse()
-                    .find((item) =>
-                        item.name === data["PRODUTO"] &&
-                        Number(item.quantity) === Number(data["QUANTIDADE"]) &&
-                        Number(item.price) === Number(data["PREÇO"])
-                    );
-
-                if (createdProduct) markRecentlyTouched("products", createdProduct.id);
+                const result = await createSheetRow(SHEET_NAMES.products, data);
+                const createdProduct = productFromPayload(result.id, data);
+                upsertById(state.products, createdProduct);
+                markRecentlyTouched("products", createdProduct.id);
             }
 
-            renderProductSection();
+            invalidateDashboardCache();
+            renderProductSection({ animateChart: true });
             resetProductForm();
             closeModal(el.productModal);
         }, {
@@ -1525,9 +1653,12 @@ async function deleteProduct(id) {
     try {
         const toastId = showFeedbackToastLoading("Excluindo produto", "Aguarde enquanto a exclusão é processada.");
         await deleteSheetRow(SHEET_NAMES.products, id);
-        await loadProducts();
-        renderProductSection();
+
+        removeById(state.products, id);
+        invalidateDashboardCache();
+        renderProductSection({ animateChart: true });
         resetProductForm();
+
         showFeedbackToastSuccess(toastId, "Produto excluído", "O produto foi removido com sucesso.");
     } catch (error) {
         console.error(error);
@@ -1572,9 +1703,9 @@ function renderProducts() {
     renderLucideIcons();
 }
 
-function renderClientSection() {
+function renderClientSection({ animateChart = false } = {}) {
     renderClients();
-    renderDashboard();
+    scheduleDashboardRender({ animateChart });
     renderLucideIcons();
 }
 
@@ -1591,20 +1722,13 @@ async function saveClient(event) {
 
     try {
         await withProcessing(submitButton, "Salvando...", async () => {
-            await createSheetRow(SHEET_NAMES.clients, data);
-            await loadClients();
+            const result = await createSheetRow(SHEET_NAMES.clients, data);
+            const createdClient = clientFromPayload(result.id, data);
+            upsertById(state.clients, createdClient);
+            markRecentlyTouched("clients", createdClient.id);
 
-            const createdClient = [...state.clients]
-                .reverse()
-                .find((item) =>
-                    item.name === data["NOME"] &&
-                    item.phone === data["TELEFONE"] &&
-                    item.email === data["E-MAIL"]
-                );
-
-            if (createdClient) markRecentlyTouched("clients", createdClient.id);
-
-            renderClientSection();
+            invalidateDashboardCache();
+            renderClientSection({ animateChart: true });
             resetClientForm();
             closeModal(el.clientModal);
         }, {
@@ -1626,8 +1750,11 @@ async function deleteClient(id) {
     try {
         const toastId = showFeedbackToastLoading("Excluindo cliente", "Aguarde enquanto o cadastro é removido.");
         await deleteSheetRow(SHEET_NAMES.clients, id);
-        await loadClients();
-        renderClientSection();
+
+        removeById(state.clients, id);
+        invalidateDashboardCache();
+        renderClientSection({ animateChart: true });
+
         showFeedbackToastSuccess(toastId, "Cliente excluído", "O cadastro foi removido com sucesso.");
     } catch (error) {
         console.error(error);
@@ -1733,20 +1860,31 @@ async function deleteSale(id) {
         if (sale) {
             const product = state.products.find((item) => item.name === sale.productName);
             if (product) {
+                const updatedProduct = {
+                    ...product,
+                    quantity: Number(product.quantity) + Number(sale.quantity)
+                };
+
                 await updateSheetRow(SHEET_NAMES.products, product.id, {
-                    "PRODUTO": product.name,
-                    "QUANTIDADE": Number(product.quantity) + Number(sale.quantity),
-                    "PREÇO": Number(product.price)
+                    "PRODUTO": updatedProduct.name,
+                    "QUANTIDADE": updatedProduct.quantity,
+                    "PREÇO": Number(updatedProduct.price)
                 });
+
+                upsertById(state.products, updatedProduct);
+                markRecentlyTouched("products", updatedProduct.id);
             }
         }
 
         await deleteSheetRow(SHEET_NAMES.sales, id);
-        await Promise.all([loadProducts(), loadSales()]);
-        renderDashboard();
+        removeById(state.sales, id);
+
+        invalidateDashboardCache();
         renderProducts();
         populateSaleProducts();
         renderSales();
+        scheduleDashboardRender({ animateChart: true });
+
         showFeedbackToastSuccess(toastId, "Venda excluída", "A exclusão foi concluída com sucesso.");
     } catch (error) {
         console.error(error);
@@ -1794,11 +1932,18 @@ async function saveSale(event) {
                         ? availableStock - quantity
                         : Number(oldProduct.quantity) + Number(oldSale.quantity);
 
+                    const restoredProduct = {
+                        ...oldProduct,
+                        quantity: restoredQty
+                    };
+
                     await updateSheetRow(SHEET_NAMES.products, oldProduct.id, {
-                        "PRODUTO": oldProduct.name,
-                        "QUANTIDADE": restoredQty,
-                        "PREÇO": Number(oldProduct.price)
+                        "PRODUTO": restoredProduct.name,
+                        "QUANTIDADE": restoredProduct.quantity,
+                        "PREÇO": Number(restoredProduct.price)
                     });
+
+                    upsertById(state.products, restoredProduct);
                 }
 
                 if (product.id !== (oldProduct?.id || "")) {
@@ -1806,65 +1951,73 @@ async function saveSale(event) {
                         throw new Error("Quantidade maior que o estoque disponível.");
                     }
 
+                    const targetProduct = {
+                        ...product,
+                        quantity: Number(product.quantity) - quantity
+                    };
+
                     await updateSheetRow(SHEET_NAMES.products, product.id, {
-                        "PRODUTO": product.name,
-                        "QUANTIDADE": Number(product.quantity) - quantity,
-                        "PREÇO": Number(product.price)
+                        "PRODUTO": targetProduct.name,
+                        "QUANTIDADE": targetProduct.quantity,
+                        "PREÇO": Number(targetProduct.price)
                     });
+
+                    upsertById(state.products, targetProduct);
                 }
 
-                await updateSheetRow(SHEET_NAMES.sales, state.editingSaleId, {
+                const updatedSalePayload = {
                     "PRODUTO": product.name,
                     "CLIENTE": normalizeText(el.saleCustomer.value) || "Cliente avulso",
                     "QUANTIDADE": quantity,
                     "PREÇO UNITÁRIO": unitPrice,
                     "TOTAL": quantity * unitPrice,
                     "DATA": oldSale.date
-                });
+                };
 
+                await updateSheetRow(SHEET_NAMES.sales, state.editingSaleId, updatedSalePayload);
+
+                const updatedSale = saleFromPayload(state.editingSaleId, updatedSalePayload);
+                upsertById(state.sales, updatedSale);
                 markRecentlyTouched("sales", state.editingSaleId);
             } else {
                 if (quantity > Number(product.quantity)) {
                     throw new Error("Quantidade maior que o estoque disponível.");
                 }
 
-                await createSheetRow(SHEET_NAMES.sales, {
+                const salePayload = {
                     "PRODUTO": product.name,
                     "CLIENTE": normalizeText(el.saleCustomer.value) || "Cliente avulso",
                     "QUANTIDADE": quantity,
                     "PREÇO UNITÁRIO": unitPrice,
                     "TOTAL": quantity * unitPrice,
                     "DATA": new Date().toISOString()
-                });
+                };
+
+                const saleResult = await createSheetRow(SHEET_NAMES.sales, salePayload);
+                const createdSale = saleFromPayload(saleResult.id, salePayload);
+                upsertById(state.sales, createdSale);
+                markRecentlyTouched("sales", createdSale.id);
+
+                const updatedProduct = {
+                    ...product,
+                    quantity: Number(product.quantity) - quantity
+                };
 
                 await updateSheetRow(SHEET_NAMES.products, product.id, {
-                    "PRODUTO": product.name,
-                    "QUANTIDADE": Number(product.quantity) - quantity,
-                    "PREÇO": Number(product.price)
+                    "PRODUTO": updatedProduct.name,
+                    "QUANTIDADE": updatedProduct.quantity,
+                    "PREÇO": Number(updatedProduct.price)
                 });
+
+                upsertById(state.products, updatedProduct);
+                markRecentlyTouched("products", updatedProduct.id);
             }
 
-            await Promise.all([loadProducts(), loadSales()]);
-
-            if (!state.editingSaleId) {
-                const createdSale = [...state.sales]
-                    .reverse()
-                    .find((item) =>
-                        item.productName === product.name &&
-                        item.customer === (normalizeText(el.saleCustomer.value) || "Cliente avulso") &&
-                        Number(item.quantity) === quantity &&
-                        Number(item.unitPrice) === unitPrice
-                    );
-
-                if (createdSale) markRecentlyTouched("sales", createdSale.id);
-            }
-
-            markRecentlyTouched("products", product.id);
-
-            renderDashboard();
+            invalidateDashboardCache();
             renderProducts();
             populateSaleProducts();
             renderSales();
+            scheduleDashboardRender({ animateChart: true });
             resetSaleForm();
             closeModal(el.saleModal);
         }, {
@@ -1932,13 +2085,13 @@ function filterSales() {
 }
 
 function renderAll() {
-    renderDashboard();
     renderAppointments();
     renderProducts();
     renderClients();
     populateSaleProducts();
     renderSales();
     updateDateTimePreview();
+    scheduleDashboardRender({ animateChart: true });
     renderLucideIcons();
 }
 
@@ -1952,7 +2105,7 @@ el.mobileSidebarOverlay.addEventListener("click", closeMobileSidebar);
 el.themeToggleBtn.addEventListener("click", () => {
     const currentTheme = el.html.getAttribute("data-theme");
     setTheme(currentTheme === "dark" ? "light" : "dark");
-    renderRevenueChart(false);
+    requestAnimationFrame(() => renderRevenueChart(false));
 });
 
 el.appointmentForm.addEventListener("submit", saveAppointment);
@@ -2025,7 +2178,7 @@ document.addEventListener("keydown", (event) => {
 
 window.addEventListener("resize", () => {
     handleResponsiveSidebar();
-    renderRevenueChart(false);
+    requestAnimationFrame(() => renderRevenueChart(false));
 });
 
 function init() {

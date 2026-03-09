@@ -1425,7 +1425,7 @@ async function saveAppointment(event) {
             closeModal(el.appointmentModal);
         }, {
             loadingTitle: isEditing ? "Atualizando agendamento" : "Salvando agendamento",
-            loadingMessage: "Os dados estão sendo sincronizados com a planilha do Google Sheets.",
+            loadingMessage: "Por favor, aguarde.",
             successTitle: isEditing ? "Agendamento atualizado" : "Agendamento salvo",
             successMessage: isEditing
                 ? "A alteração do agendamento foi confirmada com sucesso."
@@ -1508,7 +1508,7 @@ async function finishAppointment() {
             state.selectedAppointmentId = null;
         }, {
             loadingTitle: "Encerrando atendimento",
-            loadingMessage: "A venda correspondente está sendo gerada e o agendamento será removido.",
+            loadingMessage: "A venda correspondente está sendo gerada.",
             successTitle: "Atendimento encerrado",
             successMessage: "A ação foi confirmada e refletida no sistema.",
             errorTitle: "Falha ao encerrar atendimento"
@@ -1633,7 +1633,7 @@ async function saveProduct(event) {
             closeModal(el.productModal);
         }, {
             loadingTitle: id ? "Atualizando produto" : "Salvando produto",
-            loadingMessage: "O cadastro do produto está sendo enviado para a planilha.",
+            loadingMessage: "Por favor, aguarde.",
             successTitle: id ? "Produto atualizado" : "Produto cadastrado",
             successMessage: "A alteração foi confirmada com sucesso.",
             errorTitle: "Falha ao salvar produto"
@@ -1745,7 +1745,7 @@ async function saveClient(event) {
             closeModal(el.clientModal);
         }, {
             loadingTitle: "Salvando cliente",
-            loadingMessage: "O cadastro do cliente está sendo sincronizado com a planilha.",
+            loadingMessage: "Criando cadastro do cliente.",
             successTitle: "Cliente cadastrado",
             successMessage: "O cadastro foi concluído com sucesso.",
             errorTitle: "Falha ao salvar cliente"

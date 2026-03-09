@@ -1,14 +1,13 @@
 const API_BASE_URL = "https://script.google.com/macros/s/AKfycbyVNqoHcQUE9w8v1KDZGRuceuCgXGsiZRXFo3bIF5HOTdLiJpvgVaKs7vK4z3N8BoCF/exec";
 
 const STORAGE_KEYS = {
-    auth: "beleza_oculta_auth",
     theme: "beleza_oculta_theme"
 };
 
 const LOW_STOCK_LIMIT = 5;
 const DEFAULT_LOGIN = {
-    email: "admin@belezaoculta.com",
-    password: "123456"
+    email: "Elane",
+    password: "BOH2026"
 };
 
 const MONTHS_PT_BR = [
@@ -78,6 +77,7 @@ const state = {
     dashboardRenderFrame: null,
     metricsCache: null,
     revenueChartCache: [],
+    isAuthenticated: false,
     lastTouched: {
         appointments: null,
         products: null,
@@ -353,11 +353,32 @@ function normalizeText(value) {
 }
 
 function toNumber(value) {
-    const normalized = String(value ?? "")
-        .replace(/\s/g, "")
-        .replace(/[R$]/g, "")
-        .replace(/\./g, "")
-        .replace(",", ".");
+    if (typeof value === "number") {
+        return Number.isFinite(value) ? value : 0;
+    }
+
+    let normalized = String(value ?? "").trim();
+
+    if (!normalized) return 0;
+
+    normalized = normalized.replace(/\s/g, "").replace(/[R$]/g, "");
+
+    const hasComma = normalized.includes(",");
+    const hasDot = normalized.includes(".");
+
+    if (hasComma && hasDot) {
+        const lastComma = normalized.lastIndexOf(",");
+        const lastDot = normalized.lastIndexOf(".");
+
+        if (lastComma > lastDot) {
+            normalized = normalized.replace(/\./g, "").replace(",", ".");
+        } else {
+            normalized = normalized.replace(/,/g, "");
+        }
+    } else if (hasComma) {
+        normalized = normalized.replace(",", ".");
+    }
+
     const numeric = Number(normalized);
     return Number.isFinite(numeric) ? numeric : 0;
 }
@@ -515,15 +536,6 @@ function buildRevenueDataLast7Days() {
 
     const dayMap = new Map();
 
-    for (const appointment of state.appointments) {
-        const appointmentDate = parseFlexibleDate(appointment.date);
-        if (!appointmentDate) continue;
-
-        appointmentDate.setHours(0, 0, 0, 0);
-        const key = appointmentDate.toISOString().slice(0, 10);
-        dayMap.set(key, (dayMap.get(key) || 0) + toNumber(appointment.value));
-    }
-
     for (const sale of state.sales) {
         const saleDate = parseFlexibleDate(sale.date);
         if (!saleDate) continue;
@@ -567,7 +579,6 @@ function computeDashboardMetrics() {
         const appointmentDate = parseFlexibleDate(appointment.date);
         if (appointmentDate && sameCalendarDay(appointmentDate, now)) {
             todayAppointments.push(appointment);
-            todayRevenue += toNumber(appointment.value);
         }
     }
 
@@ -839,17 +850,16 @@ async function initializeAppData() {
     }
 }
 
-function setAuth(email) {
-    localStorage.setItem(STORAGE_KEYS.auth, JSON.stringify({ isAuthenticated: true, email }));
+function setAuth() {
+    state.isAuthenticated = true;
 }
 
 function clearAuth() {
-    localStorage.removeItem(STORAGE_KEYS.auth);
+    state.isAuthenticated = false;
 }
 
 function isAuthenticated() {
-    const authData = JSON.parse(localStorage.getItem(STORAGE_KEYS.auth));
-    return Boolean(authData?.isAuthenticated);
+    return state.isAuthenticated;
 }
 
 function setTheme(theme) {
@@ -875,18 +885,18 @@ function updateAuthView() {
 function handleLogin(event) {
     event.preventDefault();
 
-    const email = normalizeText(el.loginEmail.value).toLowerCase();
+    const email = normalizeText(el.loginEmail.value);
     const password = normalizeText(el.loginPassword.value);
 
     if (email === DEFAULT_LOGIN.email && password === DEFAULT_LOGIN.password) {
-        setAuth(email);
+        setAuth();
         el.loginForm.reset();
         updateAuthView();
         initializeAppData();
         return;
     }
 
-    alert("E-mail ou senha inválidos.");
+    alert("Usuário ou senha inválidos.");
 }
 
 function handleLogout() {
@@ -1122,10 +1132,12 @@ function resetSaleForm() {
     el.saleId.value = "";
     el.saleModalTitle.textContent = "Nova Venda de Produto";
     el.saleSubmitBtn.innerHTML = `<i data-lucide="shopping-bag"></i> Salvar Venda`;
+
     populateSaleProducts();
-    if (el.saleProduct.options.length > 0) {
-        updateSalePriceFromProduct();
-    }
+
+    el.saleProduct.value = "";
+    el.saleUnitPrice.value = "";
+
     renderLucideIcons();
 }
 
@@ -1797,26 +1809,36 @@ function filterClients() {
 }
 
 function populateSaleProducts() {
-    const currentSelectedValue = el.saleProduct.value;
-    const availableProducts = state.products.filter((item) => Number(item.quantity) > 0 || item.id === currentSelectedValue);
+    const availableProducts = state.products.filter(
+        (item) => Number(item.quantity) > 0
+    );
 
     if (availableProducts.length === 0) {
         el.saleProduct.innerHTML = `<option value="">Sem produtos disponíveis</option>`;
         return;
     }
 
-    el.saleProduct.innerHTML = availableProducts
-        .map((item) => `
-      <option value="${item.id}">
-        ${item.name} • Estoque: ${item.quantity} • ${formatCurrency(item.price)}
-      </option>
-    `)
-        .join("");
+    el.saleProduct.innerHTML =
+        `<option value="">Selecione um produto</option>` +
+        availableProducts
+            .map(
+                (item) => `
+      <option value="${item.id}">${item.name}</option>
+    `
+            )
+            .join("");
+
+    el.saleProduct.value = "";
 }
 
 function updateSalePriceFromProduct() {
     const product = state.products.find((item) => item.id === el.saleProduct.value);
-    if (!product) return;
+
+    if (!product) {
+        el.saleUnitPrice.value = "";
+        return;
+    }
+
     el.saleUnitPrice.value = Number(product.price).toFixed(2);
 }
 
@@ -2022,9 +2044,9 @@ async function saveSale(event) {
             closeModal(el.saleModal);
         }, {
             loadingTitle: state.editingSaleId ? "Atualizando venda" : "Salvando venda",
-            loadingMessage: "A venda e o estoque estão sendo sincronizados com a planilha.",
+            loadingMessage: "A venda e o estoque estão sendo sincronizados.",
             successTitle: state.editingSaleId ? "Venda atualizada" : "Venda registrada",
-            successMessage: "A alteração foi confirmada e refletida no sistema.",
+            successMessage: "A alteração foi confirmada.",
             errorTitle: "Falha ao salvar venda"
         });
     } catch (error) {
@@ -2196,6 +2218,7 @@ function init() {
         node.dataset.value = "0";
     });
 
+    clearAuth();
     initTheme();
     updateAuthView();
     handleResponsiveSidebar();

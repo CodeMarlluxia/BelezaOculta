@@ -1657,16 +1657,6 @@ img {
     font-size: 0.82rem;
   }
 
-  /* Login */
-  .login-card {
-    width: 100%;
-    padding: 28px 16px;
-    gap: 18px;
-  }
-
-  .login-title {
-    font-size: 1.3rem;
-  }
 }
 
 /* ============================================================
@@ -1677,6 +1667,9 @@ img {
   z-index: 9999;
   background: var(--bg);
   backdrop-filter: none;
+  padding: 24px 16px;
+  align-items: center;
+  justify-content: center;
 }
 
 body[data-theme="dark"] .login-overlay {
@@ -1689,6 +1682,45 @@ body[data-theme="dark"] .login-overlay {
   display: flex;
   flex-direction: column;
   gap: 28px;
+}
+
+@media (max-width: 480px) {
+  .login-overlay {
+    padding: 16px;
+    align-items: stretch;
+    justify-content: center;
+  }
+
+  .login-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 32px 20px;
+    gap: 22px;
+    border-radius: var(--radius-xl);
+  }
+
+  .login-brand .brand-icon {
+    width: 56px;
+    height: 56px;
+  }
+
+  .login-title {
+    font-size: 1.5rem !important;
+  }
+
+  .login-subtitle {
+    font-size: 0.875rem;
+  }
+
+  .login-form .field-group input {
+    height: 48px;
+    font-size: 1rem;
+  }
+
+  .login-form .primary-button {
+    height: 50px;
+    font-size: 1rem;
+  }
 }
 
 .login-brand {

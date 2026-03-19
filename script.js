@@ -794,8 +794,19 @@ function renderAll() {
 
 function setModalVisibility(modal, visible) {
   if (!modal) return;
+  if (!visible) {
+    // Move focus out before hiding to prevent aria-hidden focus warning
+    const focused = modal.querySelector(':focus');
+    if (focused) focused.blur();
+  }
   modal.classList.toggle('active', visible);
   modal.setAttribute('aria-hidden', visible ? 'false' : 'true');
+  // Use inert to properly block interaction AND focus when hidden
+  if (visible) {
+    modal.removeAttribute('inert');
+  } else {
+    modal.setAttribute('inert', '');
+  }
   document.body.style.overflow = visible ? 'hidden' : '';
 }
 
@@ -1646,14 +1657,21 @@ function hideLoginError() {
 function openLoginModal() {
   loginForm.reset();
   hideLoginError();
-  setModalVisibility(loginModal, true);
   loginModal.classList.add('active');
-  document.getElementById('loginUser').focus();
+  loginModal.setAttribute('aria-hidden', 'false');
+  loginModal.removeAttribute('inert');
+  document.body.style.overflow = 'hidden';
+  setTimeout(() => document.getElementById('loginUser')?.focus(), 80);
 }
 
 function closeLoginModal() {
+  // Blur focused element inside login modal before hiding
+  const focused = loginModal?.querySelector(':focus');
+  if (focused) focused.blur();
   loginModal.classList.remove('active');
   loginModal.setAttribute('aria-hidden', 'true');
+  loginModal.setAttribute('inert', '');
+  document.body.style.overflow = '';
 }
 
 function applyAccessLevel(nivel) {

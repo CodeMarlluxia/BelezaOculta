@@ -131,6 +131,11 @@ const topProviderMeta = document.getElementById('topProviderMeta');
 let weeklyRevenueChart = null;
 let colabAttendanceChart = null;
 
+// Sidebar drawer elements
+const sidebarToggleBtn = document.getElementById('sidebarToggleBtn');
+const sidebarOverlay = document.getElementById('sidebarOverlay');
+const sidebar = document.querySelector('.sidebar');
+
 // Product picker elements
 const productPickerModal = document.getElementById('productPickerModal');
 const productPickerSearch = document.getElementById('productPickerSearch');
@@ -1211,6 +1216,48 @@ clientsForm?.addEventListener('submit', async (event) => {
   }
 });
 
+// ─── SIDEBAR DRAWER (MOBILE) ────────────────────────────────────────────────
+
+function openSidebar() {
+  sidebar?.classList.add('open');
+  sidebarOverlay?.classList.add('active');
+  sidebarOverlay?.removeAttribute('aria-hidden');
+  sidebarToggleBtn?.setAttribute('aria-expanded', 'true');
+  const icon = sidebarToggleBtn?.querySelector('[data-lucide]');
+  if (icon) { icon.setAttribute('data-lucide', 'x'); updateLucideIcons(); }
+}
+
+function closeSidebar() {
+  sidebar?.classList.remove('open');
+  sidebarOverlay?.classList.remove('active');
+  sidebarOverlay?.setAttribute('aria-hidden', 'true');
+  sidebarToggleBtn?.setAttribute('aria-expanded', 'false');
+  const icon = sidebarToggleBtn?.querySelector('[data-lucide]');
+  if (icon) { icon.setAttribute('data-lucide', 'menu'); updateLucideIcons(); }
+}
+
+function isMobile() {
+  return window.innerWidth <= 1024;
+}
+
+sidebarToggleBtn?.addEventListener('click', () => {
+  sidebar?.classList.contains('open') ? closeSidebar() : openSidebar();
+});
+
+sidebarOverlay?.addEventListener('click', closeSidebar);
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && sidebar?.classList.contains('open')) closeSidebar();
+});
+
+// Close drawer when a nav item is tapped on mobile
+navButtons.forEach((btn) => {
+  btn.addEventListener('click', () => { if (isMobile()) closeSidebar(); });
+});
+
+// ────────────────────────────────────────────────────────────────────────────
+
+
 // ─── PRODUCT PICKER ─────────────────────────────────────────────────────────
 
 function renderProductPickerList(filter = '') {
@@ -1592,8 +1639,10 @@ function setLoggedInUser(user) {
   state.currentUser = user;
   const nameEl = document.getElementById('sidebarUserName');
   const roleEl = document.getElementById('sidebarUserRole');
+  const mobileNameEl = document.getElementById('mobileUserName');
   if (nameEl) nameEl.textContent = user.usuario || 'Usuária';
   if (roleEl) roleEl.textContent = capitalizeFirst(user.nivel || 'Colaboradora');
+  if (mobileNameEl) mobileNameEl.textContent = user.usuario || 'Usuária';
   applyAccessLevel(user.nivel);
 }
 

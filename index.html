@@ -14,6 +14,23 @@
 </head>
 
 <body data-theme="light">
+  <!-- TOPBAR MOBILE -->
+  <header class="mobile-topbar" aria-label="Cabeçalho mobile">
+    <div class="mobile-brand">
+      <div class="brand-icon" aria-hidden="true">
+        <img src="https://cdn.jsdelivr.net/gh/lucide-icons/lucide@main/icons/sparkles.svg" alt="" />
+      </div>
+      <span class="brand-title" id="mobileUserName">Usuária</span>
+    </div>
+    <button id="sidebarToggleBtn" class="icon-button sidebar-toggle-btn" type="button" aria-label="Abrir menu"
+      aria-expanded="false">
+      <i data-lucide="menu"></i>
+    </button>
+  </header>
+
+  <!-- OVERLAY DO DRAWER -->
+  <div id="sidebarOverlay" class="sidebar-overlay" aria-hidden="true"></div>
+
   <div class="app-shell">
     <aside class="sidebar">
       <div class="sidebar-top">

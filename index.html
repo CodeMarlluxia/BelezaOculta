@@ -723,8 +723,11 @@
     </div>
   </div>
 
+  <!-- chart.js deferred — non-blocking, loaded before script.js (order guaranteed) -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
-  <script src="https://unpkg.com/lucide@latest" defer></script>
+  <!-- lucide sync — small lib, needed immediately for icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- app script deferred — runs after DOM + chart.js are ready -->
   <script src="script.js" defer></script>
 </body>
 

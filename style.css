@@ -95,6 +95,7 @@ body[data-theme="dark"] {
 
 html {
   scroll-behavior: smooth;
+  overflow-x: hidden;
 }
 
 body {
@@ -111,6 +112,9 @@ body {
   transition:
     background 280ms var(--ease),
     color 220ms var(--ease);
+  /* Prevent any child from expanding viewport beyond screen width */
+  overflow-x: hidden;
+  max-width: 100vw;
 }
 
 button,
@@ -135,6 +139,9 @@ img {
   min-height: 100vh;
   display: grid;
   grid-template-columns: 268px 1fr;
+  /* Never expand past viewport width */
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 /* ─── Sidebar ─────────────────────────────────────────────── */
@@ -733,16 +740,24 @@ img {
 }
 
 .table-wrapper {
-  overflow: auto;
+  /* CRITICAL: overflow-x:auto must be set here so min-width on table
+     creates scroll inside the wrapper, NOT viewport expansion */
+  overflow-x: auto;
+  overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
   margin-top: 14px;
   border-radius: var(--radius-lg);
   border: 1px solid var(--border);
+  /* Prevent table from leaking outside page width */
+  max-width: 100%;
 }
 
 .table-wrapper table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 720px;
+  /* min-width keeps columns readable but scrolls INSIDE wrapper */
+  min-width: 600px;
 }
 
 .table-wrapper th,
@@ -1353,9 +1368,6 @@ img {
     overscroll-behavior-x: contain;
   }
 
-  .table-wrapper table {
-    min-width: 540px;
-  }
 
   .waiting-list {
     flex-direction: column;
@@ -1509,7 +1521,6 @@ img {
   }
 
   .table-wrapper table {
-    min-width: 480px;
     font-size: 0.8rem;
   }
 

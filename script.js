@@ -449,19 +449,14 @@ function mapClient(item) {
 }
 
 function renderTableRows(items, tableBody, emptyState, rowTemplate) {
-  tableBody.innerHTML = '';
   if (!items.length) {
+    tableBody.innerHTML = '';
     emptyState.style.display = 'block';
     return;
   }
   emptyState.style.display = 'none';
-  const fragment = document.createDocumentFragment();
-  items.forEach((item) => {
-    const row = document.createElement('tr');
-    row.innerHTML = rowTemplate(item);
-    fragment.appendChild(row);
-  });
-  tableBody.appendChild(fragment);
+  // Build all HTML in one string — single DOM write, no per-row reflow
+  tableBody.innerHTML = items.map((item) => `<tr>${rowTemplate(item)}</tr>`).join('');
 }
 
 function renderAppointments() {
@@ -783,7 +778,25 @@ function renderDashboard() {
   renderWeeklyChart();
 }
 
+function getActiveSection() {
+  const active = document.querySelector('.section.active');
+  return active ? active.id : null;
+}
+
 function renderAll() {
+  // Always re-render dashboards (KPIs, charts)
+  renderDashboard();
+  renderColabDashboard();
+
+  // Only re-render the currently visible section table
+  const section = getActiveSection();
+  if (section === 'agendamentos') renderAppointments();
+  else if (section === 'vendas') { renderSales(); populateProductsDatalist(); }
+  else if (section === 'estoque') renderInventory();
+  else if (section === 'cadastros') renderClients();
+}
+
+function renderAllSections() {
   renderAppointments();
   renderSales();
   renderInventory();
@@ -856,6 +869,16 @@ function switchSection(sectionId) {
   const selectedButton = Array.from(navButtons).find((button) => button.dataset.section === sectionId);
   pageTitle.textContent = selectedButton ? selectedButton.textContent.trim() : 'Painel';
   openAppointmentModalBtn.style.display = sectionId === 'agendamentos' ? 'inline-flex' : 'none';
+
+  // Lazy-render the section being shown
+  if (state.appointments.length || state.sales.length || state.inventory.length || state.clients.length) {
+    if (sectionId === 'agendamentos') renderAppointments();
+    else if (sectionId === 'vendas') { renderSales(); populateProductsDatalist(); }
+    else if (sectionId === 'estoque') renderInventory();
+    else if (sectionId === 'cadastros') renderClients();
+    else if (sectionId === 'dashboard') renderDashboard();
+    else if (sectionId === 'dashboard-colab') renderColabDashboard();
+  }
 }
 
 function lockSubmitButton(form, isLoading, loadingLabel = 'Enviando...') {
@@ -983,7 +1006,7 @@ async function handleRefreshData(showFeedback = true) {
     if (label) label.textContent = 'Atualizando...';
     await loadAllData();
     populateProductsDatalist();
-    renderAll();
+    renderAllSections();
     if (showFeedback) setFeedback('Dados atualizados com sucesso.', 'success');
   } catch (error) {
     setFeedback(error.message, 'error');
@@ -1398,8 +1421,10 @@ productPickerModal?.addEventListener('click', (e) => {
   if (e.target === productPickerModal) closeProductPicker();
 });
 
+let _pickerSearchTimer = null;
 productPickerSearch?.addEventListener('input', (e) => {
-  renderProductPickerList(e.target.value);
+  clearTimeout(_pickerSearchTimer);
+  _pickerSearchTimer = setTimeout(() => renderProductPickerList(e.target.value), 120);
 });
 
 productPickerList?.addEventListener('click', (e) => {
@@ -1584,16 +1609,23 @@ function renderColabLowStockTable() {
   colabLowStockCount.textContent = `${lowStockItems.length} ${lowStockItems.length === 1 ? 'item' : 'itens'}`;
 }
 
+// Cache collab dashboard DOM refs once
+const _colabEls = {};
+function getColabEl(id) {
+  if (!_colabEls[id]) _colabEls[id] = document.getElementById(id);
+  return _colabEls[id];
+}
+
 function renderColabDashboard() {
-  const colabTodayLabel = document.getElementById('colabTodayLabel');
-  const colabKpiDone = document.getElementById('colabKpiAppointmentsDone');
-  const colabStockAlertCard = document.getElementById('colabStockAlertCard');
-  const colabKpiStockAlert = document.getElementById('colabKpiStockAlert');
-  const colabKpiStockAlertText = document.getElementById('colabKpiStockAlertText');
-  const colabTopSellerName = document.getElementById('colabTopSellerName');
-  const colabTopSellerMeta = document.getElementById('colabTopSellerMeta');
-  const colabTopProviderName = document.getElementById('colabTopProviderName');
-  const colabTopProviderMeta = document.getElementById('colabTopProviderMeta');
+  const colabTodayLabel = getColabEl('colabTodayLabel');
+  const colabKpiDone = getColabEl('colabKpiAppointmentsDone');
+  const colabStockAlertCard = getColabEl('colabStockAlertCard');
+  const colabKpiStockAlert = getColabEl('colabKpiStockAlert');
+  const colabKpiStockAlertText = getColabEl('colabKpiStockAlertText');
+  const colabTopSellerName = getColabEl('colabTopSellerName');
+  const colabTopSellerMeta = getColabEl('colabTopSellerMeta');
+  const colabTopProviderName = getColabEl('colabTopProviderName');
+  const colabTopProviderMeta = getColabEl('colabTopProviderMeta');
 
   const today = getToday();
   if (colabTodayLabel) {

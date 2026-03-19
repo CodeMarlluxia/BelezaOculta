@@ -1,632 +1,701 @@
 <!DOCTYPE html>
-<html lang="pt-BR" data-theme="light">
+<html lang="pt-BR">
 
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Beleza Oculta - Sistema de Gestão</title>
-
-    <link rel="icon" type="image/svg+xml" href='data:image/svg+xml;utf8,
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
-      <defs>
-        <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stop-color="%23d9bfdc"/>
-          <stop offset="100%" stop-color="%23c9b6e4"/>
-        </linearGradient>
-      </defs>
-      <rect width="128" height="128" rx="28" fill="url(%23bg)"/>
-      <path d="M35 88c8-28 22-44 46-50 9-2 17-2 22 1-8 0-14 2-18 4 9 1 15 5 18 12-4-3-9-4-15-4 8 5 12 11 13 19 1 13-7 24-20 33-10 7-23 11-39 11 7-5 11-10 13-16-6 4-13 6-20 5z" fill="%236f5a7e"/>
-      <path d="M44 39c12-7 26-8 40-2-11 0-20 2-27 6 10-1 18 1 26 5-10-1-19 2-26 8 8-3 16-3 23-1-9 2-16 7-20 15-4 8-4 16 0 24-10-6-16-14-17-25-1-11 2-21 10-30z" fill="%23d9bfdc" opacity="0.95"/>
-    </svg>' />
-
-    <link rel="stylesheet" href="style.css" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Beleza Manager</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Serif+Display:ital@0;1&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
 </head>
 
-<body>
-    <section class="login-screen" id="loginScreen">
-        <div class="login-card surface">
-            <div class="login-card__content">
-                <span class="login-card__tag">Acesso administrativo</span>
-                <h1>Beleza Oculta</h1>
-                <p>Entre no sistema para gerenciar agendamentos, clientes, vendas e estoque do salão.</p>
-            </div>
-
-            <form id="loginForm" class="form-grid login-form">
-                <div class="form-group form-group--full">
-                    <label for="loginEmail">Usuário</label>
-                    <input type="text" id="loginEmail" placeholder="Digite seu usuário" required />
-                </div>
-
-                <div class="form-group form-group--full">
-                    <label for="loginPassword">Senha</label>
-                    <div class="password-field">
-                        <input type="password" id="loginPassword" placeholder="Digite sua senha" required />
-                        <button type="button" id="togglePasswordBtn" class="password-toggle" aria-label="Mostrar senha">
-                            <i data-lucide="eye"></i>
-                        </button>
-                    </div>
-                </div>
-
-                <div class="form-actions">
-                    <button type="submit" class="btn btn--primary btn--full">
-                        <i data-lucide="log-in"></i>
-                        Entrar no sistema
-                    </button>
-                </div>
-            </form>
+<body data-theme="light">
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="sidebar-top">
+        <div class="brand-block">
+          <div class="brand-icon" aria-hidden="true">
+            <img src="https://cdn.jsdelivr.net/gh/lucide-icons/lucide@main/icons/sparkles.svg" alt="" />
+          </div>
+          <div>
+            <h1 class="brand-title" id="sidebarUserName">Usuária</h1>
+            <p class="brand-subtitle" id="sidebarUserRole">Colaboradora</p>
+          </div>
         </div>
-    </section>
 
-    <div class="app hidden" id="appShell">
-        <div class="mobile-sidebar-overlay" id="mobileSidebarOverlay"></div>
+        <nav class="sidebar-nav" aria-label="Navegação principal">
+          <button class="nav-button active" data-section="dashboard" type="button">
+            <span class="nav-icon"><i data-lucide="layout-dashboard"></i></span>
+            <span>Dashboard</span>
+          </button>
+          <button class="nav-button" data-section="agendamentos" type="button">
+            <span class="nav-icon"><i data-lucide="calendar-days"></i></span>
+            <span>Agendamentos</span>
+          </button>
+          <button class="nav-button" data-section="vendas" type="button">
+            <span class="nav-icon"><i data-lucide="shopping-bag"></i></span>
+            <span>Vendas</span>
+          </button>
+          <button class="nav-button" data-section="estoque" type="button">
+            <span class="nav-icon"><i data-lucide="package-2"></i></span>
+            <span>Estoque</span>
+          </button>
+          <button class="nav-button" data-section="cadastros" type="button">
+            <span class="nav-icon"><i data-lucide="users"></i></span>
+            <span>Cadastros</span>
+          </button>
+        </nav>
+      </div>
 
-        <aside class="sidebar" id="sidebar">
-            <div class="sidebar__top">
-                <div class="brand">
-                    <div class="brand__icon">
-                        <i data-lucide="scissors"></i>
-                    </div>
-                    <div class="brand__text">
-                        <h1>Beleza Oculta</h1>
-                        <span>Gestão do Salão</span>
-                    </div>
-                </div>
-            </div>
+      <div class="sidebar-footer">
+        <button id="logoutBtn" class="theme-toggle-button logout-button" type="button" aria-label="Sair">
+          <span class="nav-icon"><i data-lucide="log-out"></i></span>
+          <span>Sair</span>
+        </button>
+        <button id="themeToggleBtn" class="theme-toggle-button" type="button" aria-label="Alternar tema">
+          <span class="nav-icon"><i data-lucide="moon-star"></i></span>
+          <span id="themeToggleLabel">Modo Escuro</span>
+        </button>
+      </div>
+    </aside>
 
-            <nav class="sidebar__nav">
-                <button class="nav-link active" data-section="dashboard" type="button">
-                    <i data-lucide="layout-dashboard"></i>
-                    <span>Dashboard</span>
-                </button>
-
-                <button class="nav-link" data-section="agendamentos" type="button">
-                    <i data-lucide="calendar-days"></i>
-                    <span>Agendamentos</span>
-                </button>
-
-                <button class="nav-link" data-section="vendas" type="button">
-                    <i data-lucide="shopping-bag"></i>
-                    <span>Vendas</span>
-                </button>
-
-                <button class="nav-link" data-section="estoque" type="button">
-                    <i data-lucide="package"></i>
-                    <span>Estoque</span>
-                </button>
-
-                <button class="nav-link" data-section="clientes" type="button">
-                    <i data-lucide="users"></i>
-                    <span>Clientes</span>
-                </button>
-            </nav>
-        </aside>
-
-        <main class="main">
-            <header class="topbar surface">
-                <div class="topbar__title-wrap">
-                    <button class="mobile-menu-btn" id="mobileMenuBtn" type="button" aria-label="Abrir menu">
-                        <i data-lucide="menu"></i>
-                    </button>
-
-                    <div>
-                        <p class="topbar__subtitle">Sistema Administrativo</p>
-                        <h2 id="pageTitle">Dashboard</h2>
-                    </div>
-                </div>
-
-                <div class="topbar__actions">
-                    <div class="status-badge">
-                        <i data-lucide="scissors"></i>
-                        <span>Beleza Oculta Online</span>
-                    </div>
-
-                    <button class="theme-icon-btn" id="themeToggleBtn" aria-label="Alternar tema" type="button">
-                        <i data-lucide="moon"></i>
-                    </button>
-
-                    <button class="btn btn--secondary btn--small" id="logoutBtn" type="button">
-                        <i data-lucide="log-out"></i>
-                        Sair
-                    </button>
-                </div>
-            </header>
-
-            <section class="section active" id="dashboard">
-                <div class="cards-grid">
-                    <article class="metric-card surface">
-                        <div class="metric-card__icon">
-                            <i data-lucide="calendar-check-2"></i>
-                        </div>
-                        <div class="metric-card__content">
-                            <p>Atendimentos do Dia</p>
-                            <h3 id="metricAppointments">0</h3>
-                        </div>
-                    </article>
-
-                    <article class="metric-card surface">
-                        <div class="metric-card__icon">
-                            <i data-lucide="wallet"></i>
-                        </div>
-                        <div class="metric-card__content">
-                            <p>Faturamento do Dia</p>
-                            <h3 id="metricRevenue">R$ 0,00</h3>
-                        </div>
-                    </article>
-
-                    <article class="metric-card surface alert">
-                        <div class="metric-card__icon">
-                            <i data-lucide="triangle-alert"></i>
-                        </div>
-                        <div class="metric-card__content">
-                            <p>Alertas de Estoque</p>
-                            <h3 id="metricLowStock">0</h3>
-                        </div>
-                    </article>
-                </div>
-
-                <div class="panel-grid dashboard-grid-expanded">
-                    <article class="panel surface">
-                        <div class="panel__header">
-                            <h3>Agenda do Dia</h3>
-                        </div>
-                        <div id="dashboardAppointments" class="list-preview"></div>
-                    </article>
-
-                    <article class="panel surface">
-                        <div class="panel__header">
-                            <h3>Produtos com estoque baixo</h3>
-                        </div>
-                        <div id="dashboardLowStock" class="list-preview"></div>
-                    </article>
-                </div>
-
-                <div class="panel-grid dashboard-grid-expanded">
-                    <article class="panel surface panel-chart">
-                        <div class="panel__header">
-                            <h3>Faturamento por dia</h3>
-                            <small class="panel-note">Últimos 7 dias</small>
-                        </div>
-                        <div class="chart-container">
-                            <canvas id="revenueChart" height="240"></canvas>
-                        </div>
-                    </article>
-
-                    <article class="panel surface">
-                        <div class="panel__header">
-                            <h3>Resumo do Dia</h3>
-                        </div>
-
-                        <div class="summary-cards">
-                            <div class="summary-item">
-                                <span>Clientes cadastrados</span>
-                                <strong id="metricClients">0</strong>
-                            </div>
-
-                            <div class="summary-item">
-                                <span>Produtos cadastrados</span>
-                                <strong id="metricProducts">0</strong>
-                            </div>
-
-                            <div class="summary-item">
-                                <span>Ticket médio</span>
-                                <strong id="metricAverageTicket">R$ 0,00</strong>
-                            </div>
-
-                            <div class="summary-item">
-                                <span>Produtos vendidos</span>
-                                <strong id="metricProductsSold">0</strong>
-                            </div>
-                        </div>
-                    </article>
-                </div>
-            </section>
-
-            <section class="section" id="agendamentos">
-                <div class="section-actions">
-                    <button class="btn btn--primary" id="openAppointmentModalBtn" type="button">
-                        <i data-lucide="plus"></i>
-                        Novo Agendamento
-                    </button>
-                </div>
-
-                <article class="panel surface">
-                    <div class="panel__header panel__header--responsive">
-                        <h3>Agendamentos Confirmados</h3>
-
-                        <div class="search-box">
-                            <i data-lucide="search"></i>
-                            <input type="text" id="appointmentSearch"
-                                placeholder="Buscar por cliente, serviço ou profissional..." />
-                        </div>
-                    </div>
-
-                    <div class="appointments-board" id="appointmentsBoard"></div>
-                </article>
-            </section>
-
-            <section class="section" id="vendas">
-                <div class="section-actions">
-                    <button class="btn btn--primary" id="openSaleModalBtn" type="button">
-                        <i data-lucide="plus"></i>
-                        Nova Venda
-                    </button>
-                </div>
-
-                <article class="panel surface">
-                    <div class="panel__header panel__header--responsive">
-                        <h3>Vendas de Produtos</h3>
-
-                        <div class="search-box">
-                            <i data-lucide="search"></i>
-                            <input type="text" id="saleSearch" placeholder="Buscar por produto ou cliente..." />
-                        </div>
-                    </div>
-
-                    <div class="table-wrapper">
-                        <table class="table">
-                            <thead>
-                                <tr>
-                                    <th>Produto</th>
-                                    <th>Cliente</th>
-                                    <th>Qtd.</th>
-                                    <th>Total</th>
-                                    <th>Data</th>
-                                    <th>Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody id="salesTableBody"></tbody>
-                        </table>
-                    </div>
-                </article>
-            </section>
-
-            <section class="section" id="estoque">
-                <div class="section-actions">
-                    <button class="btn btn--primary" id="openProductModalBtn" type="button">
-                        <i data-lucide="plus"></i>
-                        Novo Produto
-                    </button>
-                </div>
-
-                <article class="panel surface">
-                    <div class="panel__header">
-                        <h3>Lista de Produtos</h3>
-                    </div>
-
-                    <div class="table-wrapper">
-                        <table class="table">
-                            <thead>
-                                <tr>
-                                    <th>Produto</th>
-                                    <th>Quantidade</th>
-                                    <th>Preço</th>
-                                    <th>Status</th>
-                                    <th>Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody id="productsTableBody"></tbody>
-                        </table>
-                    </div>
-                </article>
-            </section>
-
-            <section class="section" id="clientes">
-                <div class="section-actions">
-                    <button class="btn btn--primary" id="openClientModalBtn" type="button">
-                        <i data-lucide="user-plus"></i>
-                        Novo Cliente
-                    </button>
-                </div>
-
-                <article class="panel surface">
-                    <div class="panel__header panel__header--responsive">
-                        <h3>Clientes Cadastrados</h3>
-
-                        <div class="search-box">
-                            <i data-lucide="search"></i>
-                            <input type="text" id="clientSearch" placeholder="Buscar cliente por nome..." />
-                        </div>
-                    </div>
-
-                    <div class="table-wrapper">
-                        <table class="table">
-                            <thead>
-                                <tr>
-                                    <th>Nome</th>
-                                    <th>Telefone</th>
-                                    <th>E-mail</th>
-                                    <th>Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody id="clientsTableBody"></tbody>
-                        </table>
-                    </div>
-                </article>
-            </section>
-        </main>
-    </div>
-
-    <div class="modal-overlay" id="appointmentModal">
-        <div class="modal surface modal-lg">
-            <div class="modal__header">
-                <div>
-                    <small class="modal__subtitle">Cadastro</small>
-                    <h3 id="appointmentModalTitle">Novo Agendamento</h3>
-                </div>
-
-                <button class="modal__close" data-close-modal="appointmentModal" type="button">
-                    <i data-lucide="x"></i>
-                </button>
-            </div>
-
-            <form id="appointmentForm" class="form-grid">
-                <input type="hidden" id="appointmentId" />
-
-                <div class="form-group">
-                    <label for="appointmentClient">Nome do Cliente</label>
-                    <input type="text" id="appointmentClient" placeholder="Ex: Ana Souza" required />
-                </div>
-
-                <div class="form-group">
-                    <label for="appointmentService">Serviço</label>
-                    <input type="text" id="appointmentService" placeholder="Ex: Corte + Escova" required />
-                </div>
-
-                <div class="form-group">
-                    <label for="appointmentProfessional">Profissional</label>
-                    <select id="appointmentProfessional" required>
-                        <option value="">Selecione</option>
-                        <option value="Elane">Elane</option>
-                        <option value="Edila">Edila</option>
-                        <option value="Tété">Tété</option>
-                        <option value="Biatriz">Biatriz</option>
-                        <option value="Eduarda">Eduarda</option>
-                        <option value="Juliana">Juliana</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="appointmentValue">Valor (R$)</label>
-                    <input type="number" id="appointmentValue" min="0" step="0.01" placeholder="Ex: 120.00" required />
-                </div>
-
-                <div class="form-group form-group--full">
-                    <label>Selecione data e horário</label>
-
-                    <div class="premium-datetime-grid">
-                        <div class="premium-datetime-card premium-datetime-card--date">
-                            <label class="premium-datetime-card__label">
-                                <i data-lucide="calendar-days"></i>
-                                Data
-                            </label>
-
-                            <div class="custom-date-grid">
-                                <select id="appointmentDay" required>
-                                    <option value="">Dia</option>
-                                </select>
-
-                                <select id="appointmentMonth" required>
-                                    <option value="">Mês</option>
-                                </select>
-
-                                <select id="appointmentYear" required>
-                                    <option value="">Ano</option>
-                                </select>
-                            </div>
-
-                            <small id="appointmentDatePreview">Selecione uma data</small>
-                        </div>
-
-                        <div class="premium-datetime-card premium-datetime-card--time">
-                            <label class="premium-datetime-card__label">
-                                <i data-lucide="clock-3"></i>
-                                Horário
-                            </label>
-
-                            <div class="custom-time-grid">
-                                <select id="appointmentHour" required>
-                                    <option value="">Hora</option>
-                                </select>
-
-                                <span class="time-separator">:</span>
-
-                                <select id="appointmentMinute" required>
-                                    <option value="">Min</option>
-                                </select>
-                            </div>
-
-                            <small id="appointmentTimePreview">Selecione um horário</small>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="form-actions">
-                    <button type="submit" class="btn btn--primary" id="appointmentSubmitBtn">
-                        <i data-lucide="check"></i>
-                        Salvar Agendamento
-                    </button>
-
-                    <button type="button" class="btn btn--secondary" data-close-modal="appointmentModal">
-                        <i data-lucide="x"></i>
-                        Cancelar
-                    </button>
-                </div>
-            </form>
+    <main class="content">
+      <header class="page-header">
+        <div>
+          <p class="eyebrow">Painel de gestão</p>
+          <h2 id="pageTitle">Dashboard</h2>
         </div>
-    </div>
-
-    <div class="modal-overlay" id="finishAppointmentModal">
-        <div class="modal surface">
-            <div class="modal__header">
-                <div>
-                    <small class="modal__subtitle">Confirmação</small>
-                    <h3>Encerrar Atendimento</h3>
-                </div>
-
-                <button class="modal__close" data-close-modal="finishAppointmentModal" type="button">
-                    <i data-lucide="x"></i>
-                </button>
-            </div>
-
-            <div class="confirm-box" id="finishAppointmentContent"></div>
-
-            <div class="form-actions">
-                <button type="button" class="btn btn--primary" id="confirmFinishAppointmentBtn">
-                    <i data-lucide="check-check"></i>
-                    Encerrar Atendimento
-                </button>
-
-                <button type="button" class="btn btn--secondary" data-close-modal="finishAppointmentModal">
-                    <i data-lucide="x"></i>
-                    Cancelar
-                </button>
-            </div>
+        <div class="header-actions">
+          <button id="refreshDashboardBtn" class="secondary-button" type="button">
+            <i data-lucide="refresh-cw"></i>
+            <span>Atualizar</span>
+          </button>
+          <button id="openAppointmentModalBtn" class="primary-button" type="button">
+            <i data-lucide="plus"></i>
+            <span>Novo Agendamento</span>
+          </button>
         </div>
-    </div>
+      </header>
 
-    <div class="modal-overlay" id="productModal">
-        <div class="modal surface">
-            <div class="modal__header">
-                <div>
-                    <small class="modal__subtitle">Estoque</small>
-                    <h3 id="stockFormTitle">Cadastrar Produto</h3>
-                </div>
+      <section id="feedbackBanner" class="feedback-banner" aria-live="polite"></section>
 
-                <button class="modal__close" data-close-modal="productModal" type="button">
-                    <i data-lucide="x"></i>
-                </button>
-            </div>
-
-            <form id="productForm" class="form-grid">
-                <input type="hidden" id="productId" />
-
-                <div class="form-group">
-                    <label for="productName">Produto</label>
-                    <input type="text" id="productName" placeholder="Ex: Shampoo Profissional" required />
-                </div>
-
-                <div class="form-group">
-                    <label for="productQuantity">Quantidade</label>
-                    <input type="number" id="productQuantity" min="0" placeholder="Ex: 12" required />
-                </div>
-
-                <div class="form-group form-group--full">
-                    <label for="productPrice">Preço (R$)</label>
-                    <input type="number" id="productPrice" min="0" step="0.01" placeholder="Ex: 49.90" required />
-                </div>
-
-                <div class="form-actions">
-                    <button type="submit" class="btn btn--primary" id="productSubmitBtn">
-                        <i data-lucide="save"></i>
-                        Salvar Produto
-                    </button>
-
-                    <button type="button" class="btn btn--secondary" id="cancelEditBtn">
-                        <i data-lucide="rotate-ccw"></i>
-                        Limpar
-                    </button>
-                </div>
-            </form>
+      <!-- DASHBOARD -->
+      <section id="dashboard" class="section active">
+        <div class="section-meta">
+          <div class="section-meta-left">
+            <span class="section-tag"><i data-lucide="gem"></i><span>Visão executiva</span></span>
+          </div>
+          <div class="dashboard-date-card card-surface compact-card">
+            <span class="muted-label">Hoje</span>
+            <strong id="dashboardTodayLabel">--/--/----</strong>
+          </div>
         </div>
-    </div>
 
-    <div class="modal-overlay" id="clientModal">
-        <div class="modal surface">
-            <div class="modal__header">
-                <div>
-                    <small class="modal__subtitle">Clientes</small>
-                    <h3>Cadastrar Cliente</h3>
-                </div>
-
-                <button class="modal__close" data-close-modal="clientModal" type="button">
-                    <i data-lucide="x"></i>
-                </button>
+        <div class="kpi-grid">
+          <article class="kpi-card card-surface compact-card">
+            <div class="kpi-icon"><i data-lucide="scissors"></i></div>
+            <div class="kpi-body">
+              <span class="kpi-label">Atendimentos</span>
+              <strong id="kpiAppointmentsDone">0</strong>
+              <p>Encerrados hoje</p>
             </div>
+          </article>
 
-            <form id="clientForm" class="form-grid">
-                <div class="form-group">
-                    <label for="clientName">Nome</label>
-                    <input type="text" id="clientName" placeholder="Ex: Juliana Lima" required />
-                </div>
-
-                <div class="form-group">
-                    <label for="clientPhone">Telefone</label>
-                    <input type="text" id="clientPhone" placeholder="Ex: (85) 99999-9999" required />
-                </div>
-
-                <div class="form-group form-group--full">
-                    <label for="clientEmail">E-mail</label>
-                    <input type="email" id="clientEmail" placeholder="Ex: cliente@email.com" />
-                </div>
-
-                <div class="form-actions">
-                    <button type="submit" class="btn btn--primary">
-                        <i data-lucide="user-plus"></i>
-                        Salvar Cliente
-                    </button>
-
-                    <button type="button" class="btn btn--secondary" data-close-modal="clientModal">
-                        <i data-lucide="x"></i>
-                        Cancelar
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <div class="modal-overlay" id="saleModal">
-        <div class="modal surface">
-            <div class="modal__header">
-                <div>
-                    <small class="modal__subtitle">Venda</small>
-                    <h3 id="saleModalTitle">Nova Venda de Produto</h3>
-                </div>
-
-                <button class="modal__close" data-close-modal="saleModal" type="button">
-                    <i data-lucide="x"></i>
-                </button>
+          <article class="kpi-card card-surface compact-card">
+            <div class="kpi-icon"><i data-lucide="wallet"></i></div>
+            <div class="kpi-body">
+              <span class="kpi-label">Faturamento</span>
+              <strong id="kpiDailyRevenue">R$ 0,00</strong>
+              <p>Serviços + vendas</p>
             </div>
+          </article>
 
-            <form id="saleForm" class="form-grid">
-                <input type="hidden" id="saleId" />
-
-                <div class="form-group">
-                    <label for="saleProduct">Produto</label>
-                    <select id="saleProduct" required></select>
-                </div>
-
-                <div class="form-group">
-                    <label for="saleCustomer">Cliente</label>
-                    <input type="text" id="saleCustomer" placeholder="Ex: Ana Souza" />
-                </div>
-
-                <div class="form-group">
-                    <label for="saleQuantity">Quantidade</label>
-                    <input type="number" id="saleQuantity" min="1" value="1" required />
-                </div>
-
-                <div class="form-group">
-                    <label for="saleUnitPrice">Preço unitário (R$)</label>
-                    <input type="number" id="saleUnitPrice" min="0" step="0.01" required />
-                </div>
-
-                <div class="form-actions">
-                    <button type="submit" class="btn btn--primary" id="saleSubmitBtn">
-                        <i data-lucide="shopping-bag"></i>
-                        Salvar Venda
-                    </button>
-
-                    <button type="button" class="btn btn--secondary" data-close-modal="saleModal">
-                        <i data-lucide="x"></i>
-                        Cancelar
-                    </button>
-                </div>
-            </form>
+          <article class="kpi-card card-surface compact-card alert-card" id="stockAlertCard">
+            <div class="kpi-icon"><i data-lucide="triangle-alert"></i></div>
+            <div class="kpi-body">
+              <span class="kpi-label">Estoque</span>
+              <strong id="kpiStockAlert">Sem alertas</strong>
+              <p id="kpiStockAlertText">Nenhum item crítico</p>
+            </div>
+          </article>
         </div>
-    </div>
 
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="script.js"></script>
+        <!-- Card: Clientes Aguardando -->
+        <article class="waiting-card card-surface">
+          <div class="table-toolbar">
+            <span class="table-title table-title-with-icon">
+              <i data-lucide="clock-4"></i>Clientes Aguardando
+            </span>
+            <span class="pill" id="waitingCount">0</span>
+          </div>
+          <div id="waitingList" class="waiting-list">
+            <div id="waitingEmptyState" class="waiting-empty">Nenhuma cliente aguardando no momento.</div>
+          </div>
+        </article>
+
+        <div class="dashboard-grid">
+          <article class="chart-card card-surface">
+            <div class="table-toolbar">
+              <span class="table-title table-title-with-icon"><i data-lucide="chart-column"></i>Faturamento
+                Semanal</span>
+              <span class="pill">Últimos 7 dias</span>
+            </div>
+            <div class="chart-wrap">
+              <canvas id="weeklyRevenueChart"></canvas>
+            </div>
+          </article>
+
+          <div class="dashboard-stack">
+            <article class="summary-card card-surface">
+              <div class="table-toolbar">
+                <span class="table-title table-title-with-icon"><i data-lucide="award"></i>Resumo do Dia</span>
+              </div>
+              <div class="summary-split">
+                <div class="summary-box">
+                  <span class="summary-label">Top Vendedora</span>
+                  <strong id="topSellerName">—</strong>
+                  <p id="topSellerMeta">Sem vendas hoje.</p>
+                </div>
+                <div class="summary-box">
+                  <span class="summary-label">Top Prestadora</span>
+                  <strong id="topProviderName">—</strong>
+                  <p id="topProviderMeta">0 serviços finalizados.</p>
+                </div>
+              </div>
+            </article>
+
+            <article class="table-card card-surface">
+              <div class="table-toolbar">
+                <span class="table-title table-title-with-icon"><i data-lucide="package-open"></i>Estoque Baixo</span>
+                <span class="pill warning" id="lowStockCount">0 itens</span>
+              </div>
+              <div class="table-wrapper">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>PRODUTO</th>
+                      <th>QUANTIDADE</th>
+                    </tr>
+                  </thead>
+                  <tbody id="lowStockTableBody"></tbody>
+                </table>
+              </div>
+              <div id="lowStockEmptyState" class="empty-state">Nenhum produto abaixo do limite mínimo.</div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- DASHBOARD COLABORADORA -->
+      <section id="dashboard-colab" class="section">
+        <div class="section-meta">
+          <div class="section-meta-left">
+            <span class="section-tag"><i data-lucide="sparkles"></i><span>Minha unidade</span></span>
+          </div>
+          <div class="dashboard-date-card card-surface compact-card">
+            <span class="muted-label">Hoje</span>
+            <strong id="colabTodayLabel">--/--/----</strong>
+          </div>
+        </div>
+
+        <div class="kpi-grid">
+          <article class="kpi-card card-surface compact-card">
+            <div class="kpi-icon"><i data-lucide="scissors"></i></div>
+            <div class="kpi-body">
+              <span class="kpi-label">Atendimentos</span>
+              <strong id="colabKpiAppointmentsDone">0</strong>
+              <p>Encerrados hoje</p>
+            </div>
+          </article>
+
+          <article class="kpi-card card-surface compact-card alert-card" id="colabStockAlertCard">
+            <div class="kpi-icon"><i data-lucide="triangle-alert"></i></div>
+            <div class="kpi-body">
+              <span class="kpi-label">Estoque</span>
+              <strong id="colabKpiStockAlert">Sem alertas</strong>
+              <p id="colabKpiStockAlertText">Nenhum item crítico</p>
+            </div>
+          </article>
+        </div>
+
+        <!-- Card: Clientes Aguardando -->
+        <article class="waiting-card card-surface">
+          <div class="table-toolbar">
+            <span class="table-title table-title-with-icon">
+              <i data-lucide="clock-4"></i>Clientes Aguardando
+            </span>
+            <span class="pill" id="colabWaitingCount">0</span>
+          </div>
+          <div id="colabWaitingList" class="waiting-list">
+            <div id="colabWaitingEmptyState" class="waiting-empty">Nenhuma cliente aguardando no momento.</div>
+          </div>
+        </article>
+
+        <div class="dashboard-grid">
+          <article class="chart-card card-surface">
+            <div class="table-toolbar">
+              <span class="table-title table-title-with-icon"><i data-lucide="chart-column"></i>Atendimentos por
+                Colaboradora</span>
+              <span class="pill">Hoje</span>
+            </div>
+            <div class="chart-wrap">
+              <canvas id="colabAttendanceChart"></canvas>
+            </div>
+          </article>
+
+          <div class="dashboard-stack">
+            <article class="summary-card card-surface">
+              <div class="table-toolbar">
+                <span class="table-title table-title-with-icon"><i data-lucide="award"></i>Resumo do Dia</span>
+              </div>
+              <div class="summary-split">
+                <div class="summary-box">
+                  <span class="summary-label">Top Vendedora</span>
+                  <strong id="colabTopSellerName">—</strong>
+                  <p id="colabTopSellerMeta">Sem vendas hoje.</p>
+                </div>
+                <div class="summary-box">
+                  <span class="summary-label">Top Prestadora</span>
+                  <strong id="colabTopProviderName">—</strong>
+                  <p id="colabTopProviderMeta">0 serviços finalizados.</p>
+                </div>
+              </div>
+            </article>
+
+            <article class="table-card card-surface">
+              <div class="table-toolbar">
+                <span class="table-title table-title-with-icon"><i data-lucide="package-open"></i>Estoque Baixo</span>
+                <span class="pill warning" id="colabLowStockCount">0 itens</span>
+              </div>
+              <div class="table-wrapper">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>PRODUTO</th>
+                      <th>QUANTIDADE</th>
+                    </tr>
+                  </thead>
+                  <tbody id="colabLowStockTableBody"></tbody>
+                </table>
+              </div>
+              <div id="colabLowStockEmptyState" class="empty-state">Nenhum produto abaixo do limite mínimo.</div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- AGENDAMENTOS -->
+      <section id="agendamentos" class="section">
+        <div class="section-meta">
+          <span class="section-tag"><i data-lucide="calendar-check"></i><span>Operação</span></span>
+        </div>
+
+        <div class="table-card card-surface">
+          <div class="table-toolbar">
+            <span class="table-title table-title-with-icon"><i data-lucide="calendar-range"></i>Agenda</span>
+            <span class="pill" id="appointmentsCount">0 registros</span>
+          </div>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>CLIENTE</th>
+                  <th>SERVIÇO</th>
+                  <th>PROFISSIONAL</th>
+                  <th>VALOR</th>
+                  <th>UNIDADE</th>
+                  <th>DATA/HORA</th>
+                  <th>STATUS</th>
+                  <th>AÇÃO</th>
+                </tr>
+              </thead>
+              <tbody id="appointmentsTableBody"></tbody>
+            </table>
+          </div>
+          <div id="appointmentsEmptyState" class="empty-state">Nenhum agendamento cadastrado.</div>
+        </div>
+      </section>
+
+      <!-- VENDAS -->
+      <section id="vendas" class="section">
+        <div class="section-meta">
+          <span class="section-tag"><i data-lucide="circle-dollar-sign"></i><span>Comercial</span></span>
+        </div>
+
+        <div class="form-card card-surface compact-form-card">
+          <p class="form-card-title">Registrar Venda</p>
+          <form id="salesForm" class="grid-form" novalidate>
+            <div class="field-group">
+              <label for="saleProduct">Produto</label>
+              <div class="input-with-action">
+                <input id="saleProduct" name="product" type="text" list="saleProductsList"
+                  placeholder="Informe o produto" required />
+                <button type="button" id="openProductPickerBtn" class="input-action-btn"
+                  aria-label="Escolher produto do estoque">
+                  <i data-lucide="package-search"></i>
+                </button>
+              </div>
+              <datalist id="saleProductsList"></datalist>
+            </div>
+            <div class="field-group">
+              <label for="saleClient">Cliente</label>
+              <input id="saleClient" name="client" type="text" placeholder="Informe o cliente" required />
+            </div>
+            <div class="field-group">
+              <label for="saleSeller">Vendedora</label>
+              <select id="saleSeller" name="seller" required>
+                <option value="">Selecione</option>
+                <option value="Elane">Elane</option>
+                <option value="Edila">Edila</option>
+                <option value="Tété">Tété</option>
+                <option value="Biatriz">Biatriz</option>
+                <option value="Eduarda">Eduarda</option>
+                <option value="Juliana">Juliana</option>
+              </select>
+            </div>
+            <div class="field-group">
+              <label for="saleQuantity">Quantidade</label>
+              <input id="saleQuantity" name="quantity" type="number" min="1" step="1" placeholder="0" required />
+            </div>
+            <div class="field-group">
+              <label for="salePrice">Preço</label>
+              <input id="salePrice" name="price" type="text" inputmode="decimal" placeholder="0,00" autocomplete="off"
+                required />
+            </div>
+            <div class="field-group">
+              <label for="saleUnit">Unidade</label>
+              <select id="saleUnit" name="unit" required>
+                <option value="">Selecione</option>
+                <option value="Sabiaguaba">Sabiaguaba</option>
+                <option value="Icaraí">Icaraí</option>
+              </select>
+            </div>
+            <div class="form-actions full-width">
+              <button type="submit" class="primary-button">
+                <i data-lucide="check"></i>
+                <span>Confirmar</span>
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <div class="table-card space-top card-surface">
+          <div class="table-toolbar">
+            <span class="table-title table-title-with-icon"><i data-lucide="receipt"></i>Vendas</span>
+            <span class="pill" id="salesCount">0 registros</span>
+          </div>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>PRODUTO</th>
+                  <th>CLIENTE</th>
+                  <th>VENDEDORA</th>
+                  <th>QUANTIDADE</th>
+                  <th>PREÇO</th>
+                  <th>UNIDADE</th>
+                </tr>
+              </thead>
+              <tbody id="salesTableBody"></tbody>
+            </table>
+          </div>
+          <div id="salesEmptyState" class="empty-state">Nenhuma venda registrada.</div>
+        </div>
+      </section>
+
+      <!-- ESTOQUE -->
+      <section id="estoque" class="section">
+        <div class="section-meta">
+          <span class="section-tag"><i data-lucide="boxes"></i><span>Controle</span></span>
+        </div>
+
+        <div class="form-card card-surface compact-form-card">
+          <p class="form-card-title">Adicionar Item</p>
+          <form id="inventoryForm" class="grid-form" novalidate>
+            <div class="field-group">
+              <label for="inventoryProduct">Produto</label>
+              <input id="inventoryProduct" name="product" type="text" placeholder="Informe o produto" required />
+            </div>
+            <div class="field-group">
+              <label for="inventoryQuantity">Quantidade</label>
+              <input id="inventoryQuantity" name="quantity" type="number" min="0" step="1" placeholder="0" required />
+            </div>
+            <div class="field-group">
+              <label for="inventoryPrice">Preço</label>
+              <input id="inventoryPrice" name="price" type="text" inputmode="decimal" placeholder="0,00"
+                autocomplete="off" required />
+            </div>
+            <div class="field-group">
+              <label for="inventoryUnit">Unidade</label>
+              <select id="inventoryUnit" name="unit" required>
+                <option value="">Selecione</option>
+                <option value="Sabiaguaba">Sabiaguaba</option>
+                <option value="Icaraí">Icaraí</option>
+              </select>
+            </div>
+            <div class="form-actions full-width">
+              <button type="submit" class="primary-button">
+                <i data-lucide="check"></i>
+                <span>Confirmar</span>
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <div class="table-card space-top card-surface">
+          <div class="table-toolbar">
+            <span class="table-title table-title-with-icon"><i data-lucide="package"></i>Estoque</span>
+            <span class="pill" id="inventoryCount">0 registros</span>
+          </div>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>PRODUTO</th>
+                  <th>QUANTIDADE</th>
+                  <th>PREÇO</th>
+                  <th>UNIDADE</th>
+                </tr>
+              </thead>
+              <tbody id="inventoryTableBody"></tbody>
+            </table>
+          </div>
+          <div id="inventoryEmptyState" class="empty-state">Nenhum item em estoque cadastrado.</div>
+        </div>
+      </section>
+
+      <!-- CADASTROS -->
+      <section id="cadastros" class="section">
+        <div class="section-meta">
+          <span class="section-tag"><i data-lucide="user-plus"></i><span>Relacionamento</span></span>
+        </div>
+
+        <div class="form-card card-surface compact-form-card">
+          <p class="form-card-title">Novo Cliente</p>
+          <form id="clientsForm" class="grid-form" novalidate>
+            <div class="field-group">
+              <label for="clientName">Nome</label>
+              <input id="clientName" name="name" type="text" placeholder="Nome completo" required />
+            </div>
+            <div class="field-group">
+              <label for="clientPhone">Telefone</label>
+              <input id="clientPhone" name="phone" type="tel" placeholder="(00) 00000-0000" required />
+            </div>
+            <div class="field-group">
+              <label for="clientEmail">E-mail</label>
+              <input id="clientEmail" name="email" type="email" placeholder="cliente@email.com" required />
+            </div>
+            <div class="field-group">
+              <label for="clientUnit">Unidade</label>
+              <select id="clientUnit" name="unit" required>
+                <option value="">Selecione</option>
+                <option value="Sabiaguaba">Sabiaguaba</option>
+                <option value="Icaraí">Icaraí</option>
+              </select>
+            </div>
+            <div class="form-actions full-width">
+              <button type="submit" class="primary-button">
+                <i data-lucide="check"></i>
+                <span>Confirmar</span>
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <div class="table-card space-top card-surface">
+          <div class="table-toolbar">
+            <span class="table-title table-title-with-icon"><i data-lucide="users"></i>Clientes</span>
+            <span class="pill" id="clientsCount">0 registros</span>
+          </div>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>NOME</th>
+                  <th>TELEFONE</th>
+                  <th>E-MAIL</th>
+                  <th>UNIDADE</th>
+                </tr>
+              </thead>
+              <tbody id="clientsTableBody"></tbody>
+            </table>
+          </div>
+          <div id="clientsEmptyState" class="empty-state">Nenhum cliente cadastrado.</div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- MODAL DE AGENDAMENTO -->
+  <div id="appointmentModal" class="modal-overlay" aria-hidden="true">
+    <div class="modal-card card-surface compact-modal-card">
+      <div class="modal-header">
+        <div>
+          <p class="eyebrow">Agendamentos</p>
+          <h3 id="appointmentModalTitle">Novo Agendamento</h3>
+        </div>
+        <button id="closeAppointmentModalBtn" class="icon-button" type="button" aria-label="Fechar modal">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+
+      <form id="appointmentForm" class="grid-form" novalidate>
+        <div class="field-group">
+          <label for="appointmentClient">Cliente</label>
+          <input id="appointmentClient" name="client" type="text" placeholder="Informe o cliente" required />
+        </div>
+        <div class="field-group">
+          <label for="appointmentService">Serviço</label>
+          <input id="appointmentService" name="service" type="text" placeholder="Informe o serviço" required />
+        </div>
+        <div class="field-group">
+          <label for="appointmentProfessional">Profissional</label>
+          <select id="appointmentProfessional" name="professional" required>
+            <option value="">Selecione</option>
+            <option value="Elane">Elane</option>
+            <option value="Edila">Edila</option>
+            <option value="Tété">Tété</option>
+            <option value="Biatriz">Biatriz</option>
+            <option value="Eduarda">Eduarda</option>
+            <option value="Juliana">Juliana</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label for="appointmentValue">Valor</label>
+          <input id="appointmentValue" name="value" type="text" inputmode="decimal" placeholder="0,00"
+            autocomplete="off" required />
+        </div>
+        <div class="field-group">
+          <label for="appointmentUnit">Unidade</label>
+          <select id="appointmentUnit" name="unit" required>
+            <option value="">Selecione</option>
+            <option value="Sabiaguaba">Sabiaguaba</option>
+            <option value="Icaraí">Icaraí</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label for="appointmentDateTime">Data/Hora</label>
+          <input id="appointmentDateTime" name="dateTime" type="datetime-local" required />
+        </div>
+
+        <div class="form-actions full-width modal-actions">
+          <button type="button" id="cancelAppointmentBtn" class="secondary-button">
+            <i data-lucide="x"></i>
+            <span>Cancelar</span>
+          </button>
+          <button type="submit" class="primary-button">
+            <i data-lucide="check"></i>
+            <span>Confirmar</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+
+  <div id="appointmentDetailsModal" class="modal-overlay" aria-hidden="true">
+    <div class="modal-card card-surface compact-modal-card details-modal-card">
+      <div class="modal-header">
+        <div>
+          <p class="eyebrow">Atendimento</p>
+          <h3>Detalhes do Agendamento</h3>
+        </div>
+        <button id="closeAppointmentDetailsModalBtn" class="icon-button" type="button" aria-label="Fechar detalhes">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+
+      <div class="details-grid" id="appointmentDetailsContent">
+        <div class="details-item"><span>Cliente</span><strong id="detailsClient">-</strong></div>
+        <div class="details-item"><span>Serviço</span><strong id="detailsService">-</strong></div>
+        <div class="details-item"><span>Profissional</span><strong id="detailsProfessional">-</strong></div>
+        <div class="details-item"><span>Valor</span><strong id="detailsValue">R$ 0,00</strong></div>
+        <div class="details-item"><span>Unidade</span><strong id="detailsUnit">-</strong></div>
+        <div class="details-item"><span>Data / Hora</span><strong id="detailsDateTime">-</strong></div>
+        <div class="details-item full-width"><span>Status</span><strong id="detailsStatus">Em aguardo</strong></div>
+      </div>
+
+      <div class="form-actions full-width details-actions">
+        <button type="button" id="closeAppointmentDetailsBtn" class="secondary-button">
+          <i data-lucide="x"></i>
+          <span>Fechar</span>
+        </button>
+        <button type="button" id="completeAppointmentBtn" class="primary-button">
+          <i data-lucide="check-check"></i>
+          <span>Encerrar Atendimento</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- MODAL DE LOGIN -->
+  <div id="loginModal" class="modal-overlay login-overlay active" aria-hidden="false">
+    <div class="modal-card login-card card-surface">
+      <div class="login-brand">
+        <div class="brand-icon" aria-hidden="true">
+          <img src="https://cdn.jsdelivr.net/gh/lucide-icons/lucide@main/icons/sparkles.svg" alt="" />
+        </div>
+        <h1 class="login-title">Beleza Manager</h1>
+        <p class="login-subtitle">Acesse sua conta para continuar</p>
+      </div>
+
+      <form id="loginForm" class="grid-form login-form" novalidate>
+        <div class="field-group">
+          <label for="loginUser">Usuário</label>
+          <input id="loginUser" name="usuario" type="text" placeholder="Seu usuário" autocomplete="username" required />
+        </div>
+        <div class="field-group">
+          <label for="loginPassword">Senha</label>
+          <div class="password-wrapper">
+            <input id="loginPassword" name="senha" type="password" placeholder="Sua senha"
+              autocomplete="current-password" required />
+            <button type="button" id="togglePasswordBtn" class="icon-button password-toggle" aria-label="Mostrar senha">
+              <i data-lucide="eye"></i>
+            </button>
+          </div>
+        </div>
+        <div id="loginError" class="login-error" role="alert" aria-live="assertive"></div>
+        <div class="form-actions full-width">
+          <button type="submit" class="primary-button full-width" id="loginSubmitBtn">
+            <i data-lucide="log-in"></i>
+            <span>Entrar</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+
+  <!-- MODAL: ESCOLHER PRODUTO DO ESTOQUE -->
+  <div id="productPickerModal" class="modal-overlay" aria-hidden="true">
+    <div class="modal-card card-surface product-picker-card">
+      <div class="modal-header">
+        <div>
+          <p class="eyebrow">Estoque</p>
+          <h3>Escolher Produto</h3>
+        </div>
+        <button id="closeProductPickerBtn" class="icon-button" type="button" aria-label="Fechar">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+
+      <div class="product-picker-search field-group">
+        <input id="productPickerSearch" type="text" placeholder="Buscar produto..." autocomplete="off" />
+      </div>
+
+      <div id="productPickerList" class="product-picker-list"></div>
+      <div id="productPickerEmpty" class="empty-state" style="display:none;">Nenhum produto encontrado.</div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="script.js"></script>
 </body>
 
 </html>

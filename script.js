@@ -916,7 +916,7 @@ function switchSection(sectionId) {
   }
 }
 
-function lockSubmitButton(form, isLoading, loadingLabel = 'Enviando...') {
+function lockSubmitButton(form, isLoading, loadingLabel = 'Salvando...') {
   const submitButton = form.querySelector('button[type="submit"]');
   if (!submitButton) return;
   submitButton.disabled = isLoading;
@@ -1181,7 +1181,7 @@ appointmentForm?.addEventListener('submit', async (event) => {
     renderAll();
     flashButtonSuccess(appointmentForm);
     closeAppointmentModal();
-    setFeedback('Agendamento enviado com sucesso.', 'success');
+    setFeedback('Agendamento feito com sucesso.', 'success');
   } catch (error) {
     setFeedback(error.message, 'error');
   } finally {

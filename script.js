@@ -17,7 +17,8 @@ const state = {
   inventory: [],
   clients: [],
   selectedAppointmentRow: null,
-  currentUser: null   // { usuario, nivel, unidade }
+  currentUser: null,   // { usuario, nivel, unidade }
+  activeUnitFilter: null  // null = todas; 'Sabiaguaba' | 'Icaraí' = filtrado
 };
 
 // Access level map: which sections each level can see
@@ -36,7 +37,12 @@ function getUnitFilter() {
   const user = state.currentUser;
   if (!user) return null;
   const nivel = String(user.nivel || '').toLowerCase().trim();
-  if (UNRESTRICTED_LEVELS.includes(nivel)) return null;
+  // Admin/gerente: respect their manually chosen filter (or null = all)
+  if (UNRESTRICTED_LEVELS.includes(nivel)) {
+    return state.activeUnitFilter
+      ? state.activeUnitFilter.trim().toLowerCase()
+      : null;
+  }
   return String(user.unidade || '').trim().toLowerCase();
 }
 
@@ -1216,6 +1222,50 @@ clientsForm?.addEventListener('submit', async (event) => {
   }
 });
 
+// ─── UNIT FILTER (ADMIN/GERENTE) ────────────────────────────────────────────
+
+const UNIT_OPTIONS = ['Sabiaguaba', 'Icaraí'];
+
+const unitFilterBtn = document.getElementById('unitFilterBtn');
+const unitFilterLabel = document.getElementById('unitFilterLabel');
+
+function updateUnitFilterUI() {
+  if (!unitFilterBtn || !unitFilterLabel) return;
+  const active = state.activeUnitFilter;
+  unitFilterLabel.textContent = active ? active : 'Todas as Unidades';
+  unitFilterBtn.classList.toggle('is-filtering', !!active);
+  unitFilterBtn.setAttribute('aria-label', active ? `Filtro: ${active}` : 'Filtrar por unidade');
+}
+
+function cycleUnitFilter() {
+  // Cycle: null → Sabiaguaba → Icaraí → null → ...
+  const options = [null, ...UNIT_OPTIONS];
+  const current = state.activeUnitFilter;
+  const currentIdx = options.findIndex(
+    (o) => (o === null && current === null) ||
+      (o && current && o.toLowerCase() === current.toLowerCase())
+  );
+  const nextIdx = (currentIdx + 1) % options.length;
+  state.activeUnitFilter = options[nextIdx];
+  updateUnitFilterUI();
+  renderAll();
+  const label = state.activeUnitFilter
+    ? `Exibindo apenas: ${state.activeUnitFilter}`
+    : 'Exibindo todas as unidades.';
+  setFeedback(label, state.activeUnitFilter ? 'warning' : 'success');
+}
+
+unitFilterBtn?.addEventListener('click', cycleUnitFilter);
+
+function showUnitFilterForAdmins() {
+  if (!unitFilterBtn) return;
+  const nivel = String(state.currentUser?.nivel || '').toLowerCase().trim();
+  unitFilterBtn.style.display = UNRESTRICTED_LEVELS.includes(nivel) ? '' : 'none';
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+
+
 // ─── SIDEBAR DRAWER (MOBILE) ────────────────────────────────────────────────
 
 function openSidebar() {
@@ -1461,14 +1511,15 @@ function renderColabWaitingList() {
     .sort((a, b) => (parseDate(a.dateTime)?.getTime() || 0) - (parseDate(b.dateTime)?.getTime() || 0));
 
   colabWaitingList.innerHTML = '';
+  if (colabWaitingEmptyState) colabWaitingList.appendChild(colabWaitingEmptyState);
+
   if (!waitingAppointments.length) {
-    colabWaitingList.appendChild(colabWaitingEmptyState);
-    colabWaitingEmptyState.style.display = 'block';
+    if (colabWaitingEmptyState) colabWaitingEmptyState.style.display = 'block';
     colabWaitingCount.textContent = '0';
     return;
   }
 
-  colabWaitingEmptyState.style.display = 'none';
+  if (colabWaitingEmptyState) colabWaitingEmptyState.style.display = 'none';
   colabWaitingCount.textContent = String(waitingAppointments.length);
 
   const fragment = document.createDocumentFragment();
@@ -1643,6 +1694,9 @@ function setLoggedInUser(user) {
   if (nameEl) nameEl.textContent = user.usuario || 'Usuária';
   if (roleEl) roleEl.textContent = capitalizeFirst(user.nivel || 'Colaboradora');
   if (mobileNameEl) mobileNameEl.textContent = user.usuario || 'Usuária';
+  state.activeUnitFilter = null;
+  showUnitFilterForAdmins();
+  updateUnitFilterUI();
   applyAccessLevel(user.nivel);
 }
 
@@ -1664,6 +1718,8 @@ function handleLogout() {
     btn.removeAttribute('data-access');
     btn.style.display = '';
   });
+  state.activeUnitFilter = null;
+  if (unitFilterBtn) unitFilterBtn.style.display = 'none';
   const dashNavBtn = document.querySelector('.nav-button[data-section="dashboard-colab"]');
   if (dashNavBtn) dashNavBtn.dataset.section = 'dashboard';
   openLoginModal();

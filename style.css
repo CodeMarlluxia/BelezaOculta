@@ -1311,7 +1311,7 @@ img {
 /* ── 768px: tablet portrait ─────────────────────────────── */
 @media (max-width: 768px) {
   .content {
-    padding: 20px 14px 36px;
+    padding: 18px 14px 36px;
   }
 
   .page-header h2 {
@@ -1329,7 +1329,7 @@ img {
   }
 
   .kpi-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr);
   }
 
   .dashboard-stack {
@@ -1360,7 +1360,7 @@ img {
   }
 
   .table-wrapper table {
-    min-width: 580px;
+    min-width: 540px;
   }
 
   .waiting-list {
@@ -1369,7 +1369,7 @@ img {
 
   .waiting-item {
     max-width: 100%;
-    min-width: 100%;
+    min-width: 0;
   }
 
   .modal-header h3 {
@@ -1381,90 +1381,211 @@ img {
   }
 
   .chart-wrap {
-    height: 220px;
+    height: 210px;
   }
 }
 
 /* ── 480px: mobile pequeno ──────────────────────────────── */
 @media (max-width: 480px) {
+  html {
+    font-size: 14px;
+  }
+
   .mobile-topbar {
-    height: 54px;
+    height: 52px;
     padding: 0 12px;
   }
 
   .app-shell {
-    padding-top: 54px;
+    padding-top: 52px;
+    min-width: 0;
+    overflow-x: hidden;
   }
 
   .sidebar {
-    width: 260px;
+    width: min(80vw, 260px);
+    padding: 20px 14px;
   }
 
   .content {
-    padding: 16px 12px 32px;
+    padding: 14px 10px 32px;
+    min-width: 0;
+    overflow-x: hidden;
   }
 
+  /* Page header */
   .page-header {
     flex-direction: column;
     align-items: flex-start;
     gap: 10px;
+    margin-bottom: 16px;
+    padding-bottom: 14px;
   }
 
   .page-header h2 {
-    font-size: 1.5rem;
+    font-size: 1.6rem;
+  }
+
+  .eyebrow {
+    font-size: 0.62rem;
   }
 
   .header-actions {
     width: 100%;
-    flex-direction: column;
-    align-items: stretch;
+    flex-direction: row;
+    flex-wrap: wrap;
     gap: 8px;
   }
 
   .header-actions .primary-button,
   .header-actions .secondary-button {
-    width: 100%;
+    flex: 1;
     justify-content: center;
+    min-width: 120px;
+  }
+
+  /* KPI grid: 1 coluna, cards horizontais */
+  .kpi-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
   }
 
   .kpi-card {
     flex-direction: row;
     align-items: center;
     gap: 14px;
+    padding: 14px;
   }
 
-  .table-toolbar {
+  .kpi-body strong {
+    font-size: 1.4rem;
+  }
+
+  /* Cards */
+  .card-surface,
+  .form-card,
+  .table-card,
+  .chart-card,
+  .summary-card,
+  .waiting-card,
+  .compact-card {
+    padding: 14px 12px;
+    border-radius: var(--radius-lg);
+  }
+
+  /* Section meta */
+  .section-meta {
     flex-direction: column;
     align-items: flex-start;
     gap: 8px;
+    margin-bottom: 14px;
+  }
+
+  .section-tag {
+    font-size: 0.7rem;
+    padding: 4px 10px;
+  }
+
+  .dashboard-date-card {
+    width: 100%;
+  }
+
+  /* Tabelas: scroll horizontal */
+  .table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin: 0 -12px;
+    padding: 0 12px;
   }
 
   .table-wrapper table {
-    min-width: 500px;
+    min-width: 480px;
+    font-size: 0.8rem;
+  }
+
+  .table-toolbar {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .table-title {
+    font-size: 0.8rem;
+  }
+
+  /* Pills e chips */
+  .pill {
+    font-size: 0.68rem;
+    padding: 3px 8px;
+  }
+
+  .status-chip {
+    font-size: 0.68rem;
+    padding: 3px 7px;
+  }
+
+  /* Formulários */
+  .grid-form {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .field-group label {
+    font-size: 0.78rem;
+  }
+
+  .field-group input,
+  .field-group select {
+    height: 44px;
+    font-size: 0.9rem;
   }
 
   .form-actions {
     flex-direction: column;
     align-items: stretch;
+    gap: 8px;
   }
 
   .form-actions .primary-button,
   .form-actions .secondary-button {
     width: 100%;
     justify-content: center;
+    height: 46px;
+  }
+
+  /* Botões gerais */
+  .primary-button,
+  .secondary-button {
+    font-size: 0.88rem;
+    padding: 10px 16px;
+  }
+
+  /* Modais */
+  .modal-overlay {
+    padding: 12px;
+    align-items: flex-end;
   }
 
   .modal-card,
   .details-modal-card,
   .product-picker-card {
-    width: calc(100vw - 16px);
-    padding: 18px 14px;
+    width: 100%;
+    max-width: 100%;
+    padding: 20px 14px;
+    border-radius: var(--radius-xl) var(--radius-xl) var(--radius-md) var(--radius-md);
+  }
+
+  .modal-header h3 {
+    font-size: 1.1rem;
   }
 
   .modal-actions,
   .details-actions {
     flex-direction: column;
     align-items: stretch;
+    gap: 8px;
   }
 
   .modal-actions .primary-button,
@@ -1475,30 +1596,76 @@ img {
     justify-content: center;
   }
 
-  .product-picker-list {
-    max-height: 260px;
+  .details-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  /* Lista de espera */
+  .waiting-list {
+    flex-direction: column;
+    gap: 8px;
   }
 
   .waiting-item {
+    max-width: 100%;
+    min-width: 0;
     padding: 10px 12px;
   }
 
-  .pill {
+  .waiting-name {
+    font-size: 0.88rem;
+  }
+
+  .waiting-meta {
+    font-size: 0.75rem;
+  }
+
+  /* Dashboard summary */
+  .summary-split {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .summary-box {
+    padding: 12px;
+  }
+
+  .summary-label {
     font-size: 0.7rem;
-    padding: 3px 9px;
   }
 
-  .status-chip {
-    font-size: 0.7rem;
-    padding: 3px 8px;
-  }
-
-  .compact-card {
-    padding: 14px;
-  }
-
+  /* Gráfico */
   .chart-wrap {
-    height: 190px;
+    height: 180px;
+  }
+
+  /* Product picker */
+  .product-picker-list {
+    max-height: 240px;
+  }
+
+  .product-picker-item {
+    padding: 10px 12px;
+  }
+
+  .product-picker-item-name {
+    font-size: 0.85rem;
+  }
+
+  .product-picker-item-price {
+    font-size: 0.82rem;
+  }
+
+  /* Login */
+  .login-card {
+    width: 100%;
+    padding: 28px 16px;
+    gap: 18px;
+  }
+
+  .login-title {
+    font-size: 1.3rem;
   }
 }
 
@@ -1614,6 +1781,23 @@ body[data-theme="dark"] .login-overlay {
 .full-width {
   width: 100%;
   justify-content: center;
+}
+
+
+/* Unit filter button */
+.unit-filter-button {
+  color: var(--text-soft);
+  position: relative;
+}
+
+.unit-filter-button.is-filtering {
+  color: var(--accent-deep) !important;
+  background: var(--accent-soft) !important;
+  border-color: color-mix(in srgb, var(--accent) 30%, transparent) !important;
+}
+
+.unit-filter-button.is-filtering .nav-icon {
+  opacity: 1;
 }
 
 /* Logout button */

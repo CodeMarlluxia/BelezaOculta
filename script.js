@@ -337,15 +337,50 @@ function updateCount(element, total, singular = 'registro', plural = 'registros'
   }
 }
 
+const FEEDBACK_ICONS = {
+  success: 'circle-check',
+  error: 'circle-x',
+  warning: 'triangle-alert'
+};
+
 function setFeedback(message, type = 'success') {
   if (!feedbackBanner) return;
-  feedbackBanner.className = `feedback-banner ${type}`;
-  feedbackBanner.textContent = message;
+
+  // If already showing, animate out first then back in
+  const wasVisible = feedbackBanner.classList.contains('success') ||
+    feedbackBanner.classList.contains('error') ||
+    feedbackBanner.classList.contains('warning');
+
   window.clearTimeout(setFeedback.timeoutId);
-  setFeedback.timeoutId = window.setTimeout(() => {
+  window.clearTimeout(setFeedback.hideId);
+
+  const icon = FEEDBACK_ICONS[type] || 'info';
+  feedbackBanner.innerHTML = `
+    <span class="feedback-banner-icon"><i data-lucide="${icon}"></i></span>
+    <span class="feedback-banner-text">${message}</span>
+  `;
+
+  const show = () => {
+    feedbackBanner.className = `feedback-banner ${type}`;
+    updateLucideIcons();
+    setFeedback.timeoutId = window.setTimeout(() => hideFeedback(), 4200);
+  };
+
+  if (wasVisible) {
+    feedbackBanner.classList.add('hiding');
+    setFeedback.hideId = window.setTimeout(show, 200);
+  } else {
+    show();
+  }
+}
+
+function hideFeedback() {
+  if (!feedbackBanner) return;
+  feedbackBanner.classList.add('hiding');
+  window.setTimeout(() => {
     feedbackBanner.className = 'feedback-banner';
-    feedbackBanner.textContent = '';
-  }, 4200);
+    feedbackBanner.innerHTML = '';
+  }, 320);
 }
 
 async function requestAPI(method = 'GET', payload = null) {
@@ -889,6 +924,13 @@ function lockSubmitButton(form, isLoading, loadingLabel = 'Enviando...') {
   if (label) label.textContent = isLoading ? loadingLabel : 'Confirmar';
 }
 
+function flashButtonSuccess(form) {
+  const btn = form?.querySelector('button[type="submit"]');
+  if (!btn) return;
+  btn.classList.add('btn-success');
+  window.setTimeout(() => btn.classList.remove('btn-success'), 900);
+}
+
 function buildAppointmentPayload(formData) {
   return {
     CLIENTE: normalizeText(formData.get('client')),
@@ -1137,6 +1179,7 @@ appointmentForm?.addEventListener('submit', async (event) => {
       status: 'Em aguardo'
     });
     renderAll();
+    flashButtonSuccess(appointmentForm);
     closeAppointmentModal();
     setFeedback('Agendamento enviado com sucesso.', 'success');
   } catch (error) {
@@ -1192,6 +1235,7 @@ salesForm?.addEventListener('submit', async (event) => {
 
     populateProductsDatalist();
     renderAll();
+    flashButtonSuccess(salesForm);
     salesForm.reset();
     setFeedback('Venda registrada com sucesso e estoque atualizado automaticamente.', 'success');
   } catch (error) {
@@ -1220,6 +1264,7 @@ inventoryForm?.addEventListener('submit', async (event) => {
     });
     populateProductsDatalist();
     renderAll();
+    flashButtonSuccess(inventoryForm);
     inventoryForm.reset();
     setFeedback('Item de estoque salvo com sucesso.', 'success');
   } catch (error) {
@@ -1247,6 +1292,7 @@ clientsForm?.addEventListener('submit', async (event) => {
       createdAt: result.createdAt || ''
     });
     renderAll();
+    flashButtonSuccess(clientsForm);
     clientsForm.reset();
     setFeedback('Cliente cadastrado com sucesso.', 'success');
   } catch (error) {

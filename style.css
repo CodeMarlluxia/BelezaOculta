@@ -539,7 +539,7 @@ img {
 
 .section.active {
   display: block;
-  animation: sectionFade 240ms var(--ease) forwards;
+  animation: sectionFade 300ms var(--ease) forwards;
 }
 
 @keyframes sectionFade {
@@ -626,12 +626,18 @@ img {
   grid-column: 1 / -1;
 }
 
+/* Login submit spans full width */
+.login-submit-btn {
+  width: 100% !important;
+  justify-content: center;
+}
+
 .align-end {
-  justify-content: flex-start;
+  justify-content: flex-end;
 }
 
 .space-between {
-  justify-content: flex-start;
+  justify-content: space-between;
 }
 
 .form-actions {
@@ -659,11 +665,12 @@ img {
   font-weight: 600;
   letter-spacing: 0.02em;
   transition:
-    transform 200ms var(--ease),
-    background 200ms var(--ease),
-    box-shadow 200ms var(--ease),
-    border-color 200ms var(--ease),
-    opacity 200ms var(--ease);
+    transform 180ms var(--ease),
+    background 180ms var(--ease),
+    box-shadow 180ms var(--ease),
+    border-color 180ms var(--ease),
+    opacity 180ms var(--ease),
+    color 180ms var(--ease);
 }
 
 .primary-button {
@@ -698,6 +705,38 @@ img {
 
 .primary-button:hover {
   box-shadow: 0 12px 24px rgba(201, 143, 153, 0.28);
+}
+
+.primary-button:active,
+.secondary-button:active,
+.status-action-button:active {
+  transform: translateY(1px) scale(0.985);
+  box-shadow: none !important;
+  transition-duration: 80ms;
+}
+
+@keyframes btnSuccess {
+  0% {
+    background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 78%, #fff));
+  }
+
+  20% {
+    background: linear-gradient(135deg, var(--success), color-mix(in srgb, var(--success) 80%, #fff));
+    transform: scale(1.03);
+  }
+
+  60% {
+    background: linear-gradient(135deg, var(--success), color-mix(in srgb, var(--success) 80%, #fff));
+    transform: scale(1);
+  }
+
+  100% {
+    background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 78%, #fff));
+  }
+}
+
+.primary-button.btn-success {
+  animation: btnSuccess 900ms var(--ease) forwards;
 }
 
 .primary-button:disabled,
@@ -975,33 +1014,151 @@ img {
 }
 
 /* ─── Feedback Banner ────────────────────────────────────── */
-.feedback-banner {
-  min-height: 0;
-  margin-bottom: 0;
-  overflow: hidden;
-  transition: all 200ms var(--ease);
+/* ── Feedback banner ─────────────────────────────────────── */
+@keyframes feedbackIn {
+  0% {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.98);
+    max-height: 0;
+    margin-bottom: 0;
+  }
+
+  40% {
+    opacity: 1;
+    transform: translateY(2px) scale(1.005);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    max-height: 80px;
+    margin-bottom: 16px;
+  }
 }
 
-.feedback-banner.success,
-.feedback-banner.error {
-  min-height: 46px;
-  margin-bottom: 16px;
-  padding: 12px 16px;
+@keyframes feedbackOut {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    max-height: 80px;
+    margin-bottom: 16px;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.97);
+    max-height: 0;
+    margin-bottom: 0;
+  }
+}
+
+@keyframes feedbackShake {
+
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  20% {
+    transform: translateX(-6px);
+  }
+
+  40% {
+    transform: translateX(6px);
+  }
+
+  60% {
+    transform: translateX(-4px);
+  }
+
+  80% {
+    transform: translateX(4px);
+  }
+}
+
+@keyframes feedbackPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(106, 159, 134, 0.35);
+  }
+
+  60% {
+    box-shadow: 0 0 0 8px rgba(106, 159, 134, 0);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(106, 159, 134, 0);
+  }
+}
+
+@keyframes feedbackPulseError {
+  0% {
+    box-shadow: 0 0 0 0 rgba(201, 109, 125, 0.35);
+  }
+
+  60% {
+    box-shadow: 0 0 0 8px rgba(201, 109, 125, 0);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(201, 109, 125, 0);
+  }
+}
+
+.feedback-banner {
+  overflow: hidden;
+  max-height: 0;
+  margin-bottom: 0;
+  opacity: 0;
   border-radius: var(--radius-md);
   font-size: 0.88rem;
   font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.feedback-banner.success,
+.feedback-banner.error,
+.feedback-banner.warning {
+  padding: 12px 16px;
+  pointer-events: auto;
+  animation: feedbackIn 480ms var(--ease) forwards;
+}
+
+.feedback-banner.hiding {
+  animation: feedbackOut 320ms var(--ease) forwards !important;
 }
 
 .feedback-banner.success {
   color: #2d5f49;
   background: rgba(106, 159, 134, 0.12);
-  border: 1px solid rgba(106, 159, 134, 0.22);
+  border: 1px solid rgba(106, 159, 134, 0.28);
+  animation: feedbackIn 480ms var(--ease) forwards,
+    feedbackPulse 600ms 200ms var(--ease) forwards;
 }
 
 .feedback-banner.error {
   color: #7a3242;
   background: rgba(201, 109, 125, 0.12);
-  border: 1px solid rgba(201, 109, 125, 0.22);
+  border: 1px solid rgba(201, 109, 125, 0.28);
+  animation: feedbackIn 380ms var(--ease) forwards,
+    feedbackShake 420ms 180ms var(--ease) forwards,
+    feedbackPulseError 600ms 200ms var(--ease) forwards;
+}
+
+.feedback-banner-icon {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.85;
+}
+
+.feedback-banner-text {
+  flex: 1;
 }
 
 /* ─── Modal ──────────────────────────────────────────────── */
@@ -1104,6 +1261,7 @@ img {
 
 .details-actions {
   margin-top: 16px;
+  justify-content: flex-start;
 }
 
 .feedback-banner.warning {
@@ -1846,7 +2004,6 @@ body[data-theme="dark"] .login-overlay {
 
 .full-width {
   width: 100%;
-  justify-content: center;
 }
 
 

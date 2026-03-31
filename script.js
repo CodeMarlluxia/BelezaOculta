@@ -18,7 +18,9 @@ const state = {
   clients: [],
   selectedAppointmentRow: null,
   currentUser: null,   // { usuario, nivel, unidade }
-  activeUnitFilter: null  // null = todas; 'Sabiaguaba' | 'Icaraí' = filtrado
+  activeUnitFilter: null,  // null = todas; 'Sabiaguaba' | 'Icaraí' = filtrado
+  appointmentFilterDate: null,   // string 'YYYY-MM-DD' ou null
+  appointmentFilterUnit: null    // string ou null
 };
 
 // Access level map: which sections each level can see
@@ -82,6 +84,7 @@ const cancelAppointmentBtn = document.getElementById('cancelAppointmentBtn');
 const closeAppointmentDetailsModalBtn = document.getElementById('closeAppointmentDetailsModalBtn');
 const closeAppointmentDetailsBtn = document.getElementById('closeAppointmentDetailsBtn');
 const completeAppointmentBtn = document.getElementById('completeAppointmentBtn');
+const deleteAppointmentBtn = document.getElementById('deleteAppointmentBtn');
 
 const appointmentProfessional = document.getElementById('appointmentProfessional');
 const saleSeller = document.getElementById('saleSeller');
@@ -495,7 +498,28 @@ function renderTableRows(items, tableBody, emptyState, rowTemplate) {
 }
 
 function renderAppointments() {
-  const filtered = filterByUnit(state.appointments);
+  let filtered = filterByUnit(state.appointments);
+
+  // Filtro de data local da seção
+  if (state.appointmentFilterDate) {
+    filtered = filtered.filter((item) => {
+      const date = parseDate(item.dateTime);
+      if (!date) return false;
+      const yyyy = date.getFullYear();
+      const mm = String(date.getMonth() + 1).padStart(2, '0');
+      const dd = String(date.getDate()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}` === state.appointmentFilterDate;
+    });
+  }
+
+  // Filtro de unidade local da seção (independente do filtro global)
+  if (state.appointmentFilterUnit) {
+    const unitLower = state.appointmentFilterUnit.toLowerCase();
+    filtered = filtered.filter((item) =>
+      String(item.unit || '').trim().toLowerCase() === unitLower
+    );
+  }
+
   const sorted = [...filtered].sort((a, b) => (parseDate(b.dateTime)?.getTime() || 0) - (parseDate(a.dateTime)?.getTime() || 0));
   renderTableRows(sorted, appointmentsTableBody, appointmentsEmptyState, (item) => {
     const isCompleted = isCompletedStatus(item.status);
@@ -1158,6 +1182,43 @@ completeAppointmentBtn?.addEventListener('click', async () => {
   }
 });
 
+deleteAppointmentBtn?.addEventListener('click', async () => {
+  const rowNumber = Number(state.selectedAppointmentRow || 0);
+  if (!rowNumber) {
+    setFeedback('Não foi possível identificar o agendamento selecionado.', 'error');
+    return;
+  }
+
+  if (!window.confirm('Tem certeza que deseja excluir este agendamento? Esta ação não pode ser desfeita.')) {
+    return;
+  }
+
+  const originalLabel = deleteAppointmentBtn.querySelector('span')?.textContent || 'Excluir';
+
+  try {
+    deleteAppointmentBtn.disabled = true;
+    const label = deleteAppointmentBtn.querySelector('span');
+    if (label) label.textContent = 'Excluindo...';
+
+    await requestAPI('POST', {
+      action: 'deleteRow',
+      sheet: SHEETS.AGENDAMENTOS,
+      rowNumber
+    });
+
+    state.appointments = state.appointments.filter((item) => item.rowNumber !== rowNumber);
+    renderAll();
+    closeAppointmentDetailsModal();
+    setFeedback('Agendamento excluído com sucesso.', 'success');
+  } catch (error) {
+    setFeedback(error.message, 'error');
+  } finally {
+    const label = deleteAppointmentBtn.querySelector('span');
+    if (label) label.textContent = originalLabel;
+    deleteAppointmentBtn.disabled = false;
+  }
+});
+
 appointmentForm?.addEventListener('submit', async (event) => {
   event.preventDefault();
   if (!appointmentForm.reportValidity()) return;
@@ -1342,6 +1403,33 @@ function showUnitFilterForAdmins() {
   const nivel = String(state.currentUser?.nivel || '').toLowerCase().trim();
   unitFilterBtn.style.display = UNRESTRICTED_LEVELS.includes(nivel) ? '' : 'none';
 }
+
+// ─── FILTROS DE DATA/UNIDADE — SEÇÃO AGENDAMENTOS ───────────────────────────
+
+const appointmentFilterDate = document.getElementById('appointmentFilterDate');
+const appointmentFilterUnit = document.getElementById('appointmentFilterUnit');
+const clearAppointmentFiltersBtn = document.getElementById('clearAppointmentFiltersBtn');
+
+appointmentFilterDate?.addEventListener('change', () => {
+  state.appointmentFilterDate = appointmentFilterDate.value || null;
+  renderAppointments();
+});
+
+appointmentFilterUnit?.addEventListener('change', () => {
+  state.appointmentFilterUnit = appointmentFilterUnit.value || null;
+  renderAppointments();
+});
+
+clearAppointmentFiltersBtn?.addEventListener('click', () => {
+  state.appointmentFilterDate = null;
+  state.appointmentFilterUnit = null;
+  if (appointmentFilterDate) appointmentFilterDate.value = '';
+  if (appointmentFilterUnit) appointmentFilterUnit.value = '';
+  renderAppointments();
+  setFeedback('Filtros removidos.', 'success');
+});
+
+// ────────────────────────────────────────────────────────────────────────────
 
 // ────────────────────────────────────────────────────────────────────────────
 

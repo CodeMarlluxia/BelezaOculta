@@ -324,6 +324,28 @@
           <span class="section-tag"><i data-lucide="calendar-check"></i><span>Operação</span></span>
         </div>
 
+        <!-- Filtros de data e unidade -->
+        <div class="appointments-filters card-surface compact-card">
+          <div class="filters-row">
+            <div class="filter-group">
+              <label for="appointmentFilterDate"><i data-lucide="calendar"></i> Data</label>
+              <input type="date" id="appointmentFilterDate" class="filter-input" />
+            </div>
+            <div class="filter-group">
+              <label for="appointmentFilterUnit"><i data-lucide="map-pin"></i> Unidade</label>
+              <select id="appointmentFilterUnit" class="filter-input">
+                <option value="">Todas</option>
+                <option value="Sabiaguaba">Sabiaguaba</option>
+                <option value="Icaraí">Icaraí</option>
+              </select>
+            </div>
+            <button type="button" id="clearAppointmentFiltersBtn" class="secondary-button filter-clear-btn">
+              <i data-lucide="x"></i>
+              <span>Limpar</span>
+            </button>
+          </div>
+        </div>
+
         <div class="table-card card-surface">
           <div class="table-toolbar">
             <span class="table-title table-title-with-icon"><i data-lucide="calendar-range"></i>Agenda</span>
@@ -653,6 +675,10 @@
         <button type="button" id="closeAppointmentDetailsBtn" class="secondary-button">
           <i data-lucide="x"></i>
           <span>Fechar</span>
+        </button>
+        <button type="button" id="deleteAppointmentBtn" class="danger-button">
+          <i data-lucide="trash-2"></i>
+          <span>Excluir</span>
         </button>
         <button type="button" id="completeAppointmentBtn" class="primary-button">
           <i data-lucide="check-check"></i>

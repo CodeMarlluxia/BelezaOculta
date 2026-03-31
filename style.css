@@ -2169,3 +2169,120 @@ body[data-theme="dark"] .login-overlay {
     background: var(--bg);
   }
 }
+/* ─── FILTROS DE AGENDAMENTOS ─────────────────────────────────────────────── */
+
+.appointments-filters {
+  margin-bottom: 1rem;
+  padding: 0.875rem 1rem;
+}
+
+.filters-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  flex: 1;
+  min-width: 160px;
+}
+
+.filter-group label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.filter-group label svg {
+  width: 13px;
+  height: 13px;
+}
+
+.filter-input {
+  height: 38px;
+  padding: 0 0.75rem;
+  border: 1.5px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg-soft);
+  color: var(--text);
+  font-size: 0.875rem;
+  font-family: var(--font-body);
+  transition: border-color 0.18s var(--ease), box-shadow 0.18s var(--ease);
+  outline: none;
+  cursor: pointer;
+}
+
+.filter-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.filter-clear-btn {
+  height: 38px;
+  white-space: nowrap;
+  align-self: flex-end;
+  flex-shrink: 0;
+}
+
+@media (max-width: 600px) {
+  .filters-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .filter-group {
+    min-width: 100%;
+  }
+  .filter-clear-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* ─── BOTÃO DANGER ────────────────────────────────────────────────────────── */
+
+.danger-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.55rem 1.1rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  font-weight: 600;
+  font-family: var(--font-body);
+  cursor: pointer;
+  border: 1.5px solid transparent;
+  transition: background 0.18s var(--ease), color 0.18s var(--ease), opacity 0.18s;
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 28%, transparent);
+}
+
+.danger-button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--danger) 20%, transparent);
+  border-color: color-mix(in srgb, var(--danger) 44%, transparent);
+}
+
+.danger-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.danger-button svg {
+  width: 15px;
+  height: 15px;
+}
+
+/* Ajuste nas actions do modal de detalhes para acomodar 3 botões */
+.details-actions {
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}

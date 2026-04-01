@@ -8,7 +8,7 @@ const SHEETS = {
 };
 
 const STAFF_OPTIONS = ['Elane', 'Edila', 'Tété', 'Biatriz', 'Eduarda', 'Juliana'];
-const LOW_STOCK_THRESHOLD = 5;
+const LOW_STOCK_THRESHOLD = 2;
 const THEME_STORAGE_KEY = 'beleza_manager_theme';
 
 const state = {

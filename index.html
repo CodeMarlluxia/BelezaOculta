@@ -69,6 +69,10 @@
             <span class="nav-icon"><i data-lucide="package-2"></i></span>
             <span>Estoque</span>
           </button>
+          <button class="nav-button" data-section="relatorios" type="button">
+            <span class="nav-icon"><i data-lucide="chart-column"></i></span>
+            <span>Relatórios</span>
+          </button>
           <button class="nav-button" data-section="cadastros" type="button">
             <span class="nav-icon"><i data-lucide="users"></i></span>
             <span>Cadastros</span>
@@ -324,28 +328,6 @@
           <span class="section-tag"><i data-lucide="calendar-check"></i><span>Operação</span></span>
         </div>
 
-        <!-- Filtros de data e unidade -->
-        <div class="appointments-filters card-surface compact-card">
-          <div class="filters-row">
-            <div class="filter-group">
-              <label for="appointmentFilterDate"><i data-lucide="calendar"></i> Data</label>
-              <input type="date" id="appointmentFilterDate" class="filter-input" />
-            </div>
-            <div class="filter-group">
-              <label for="appointmentFilterUnit"><i data-lucide="map-pin"></i> Unidade</label>
-              <select id="appointmentFilterUnit" class="filter-input">
-                <option value="">Todas</option>
-                <option value="Sabiaguaba">Sabiaguaba</option>
-                <option value="Icaraí">Icaraí</option>
-              </select>
-            </div>
-            <button type="button" id="clearAppointmentFiltersBtn" class="secondary-button filter-clear-btn">
-              <i data-lucide="x"></i>
-              <span>Limpar</span>
-            </button>
-          </div>
-        </div>
-
         <div class="table-card card-surface">
           <div class="table-toolbar">
             <span class="table-title table-title-with-icon"><i data-lucide="calendar-range"></i>Agenda</span>
@@ -511,12 +493,79 @@
                   <th>QUANTIDADE</th>
                   <th>PREÇO</th>
                   <th>UNIDADE</th>
+                  <th>AÇÕES</th>
                 </tr>
               </thead>
               <tbody id="inventoryTableBody"></tbody>
             </table>
           </div>
           <div id="inventoryEmptyState" class="empty-state">Nenhum item em estoque cadastrado.</div>
+        </div>
+      </section>
+
+
+      <!-- RELATÓRIOS -->
+      <section id="relatorios" class="section">
+        <div class="section-meta">
+          <div class="section-meta-left">
+            <span class="section-tag"><i data-lucide="chart-column"></i><span>Relatórios</span></span>
+          </div>
+          <div class="dashboard-date-card card-surface compact-card">
+            <span class="muted-label">Período</span>
+            <strong>Últimos 7 dias</strong>
+          </div>
+        </div>
+
+        <div class="kpi-grid">
+          <article class="kpi-card card-surface compact-card">
+            <div class="kpi-icon"><i data-lucide="wallet"></i></div>
+            <div class="kpi-body">
+              <span class="kpi-label">Faturamento</span>
+              <strong id="reportRevenue7Days">R$ 0,00</strong>
+              <p>Serviços concluídos nos últimos 7 dias</p>
+            </div>
+          </article>
+
+          <article class="kpi-card card-surface compact-card">
+            <div class="kpi-icon"><i data-lucide="scissors"></i></div>
+            <div class="kpi-body">
+              <span class="kpi-label">Atendimentos</span>
+              <strong id="reportAppointments7Days">0</strong>
+              <p>Serviços com receita no período</p>
+            </div>
+          </article>
+
+          <article class="kpi-card card-surface compact-card">
+            <div class="kpi-icon"><i data-lucide="circle-dollar-sign"></i></div>
+            <div class="kpi-body">
+              <span class="kpi-label">Serviços</span>
+              <strong id="reportServicesCount7Days">0</strong>
+              <p>Tipos de serviços que geraram faturamento</p>
+            </div>
+          </article>
+        </div>
+
+        <div class="table-card space-top card-surface">
+          <div class="table-toolbar">
+            <span class="table-title table-title-with-icon"><i data-lucide="file-text"></i>Serviços com faturamento</span>
+            <span class="pill" id="reportsCount">0 serviços</span>
+          </div>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>SERVIÇO</th>
+                  <th>UNIDADE</th>
+                  <th>ATENDIMENTOS</th>
+                  <th>FATURAMENTO</th>
+                  <th>TICKET MÉDIO</th>
+                  <th>ÚLTIMO ATENDIMENTO</th>
+                </tr>
+              </thead>
+              <tbody id="reportsTableBody"></tbody>
+            </table>
+          </div>
+          <div id="reportsEmptyState" class="empty-state">Nenhum serviço com faturamento encontrado nos últimos 7 dias.</div>
         </div>
       </section>
 
@@ -676,10 +725,6 @@
           <i data-lucide="x"></i>
           <span>Fechar</span>
         </button>
-        <button type="button" id="deleteAppointmentBtn" class="danger-button">
-          <i data-lucide="trash-2"></i>
-          <span>Excluir</span>
-        </button>
         <button type="button" id="completeAppointmentBtn" class="primary-button">
           <i data-lucide="check-check"></i>
           <span>Encerrar Atendimento</span>
@@ -688,6 +733,57 @@
     </div>
   </div>
 
+
+
+  <!-- MODAL DE EDIÇÃO DE ESTOQUE -->
+  <div id="inventoryEditModal" class="modal-overlay" aria-hidden="true" inert>
+    <div class="modal-card card-surface compact-modal-card">
+      <div class="modal-header">
+        <div>
+          <p class="eyebrow">Estoque</p>
+          <h3 id="inventoryEditModalTitle">Editar Item</h3>
+        </div>
+        <button id="closeInventoryEditModalBtn" class="icon-button" type="button" aria-label="Fechar edição de estoque">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+
+      <form id="inventoryEditForm" class="grid-form" novalidate>
+        <div class="field-group">
+          <label for="inventoryEditProduct">Produto</label>
+          <input id="inventoryEditProduct" name="product" type="text" placeholder="Informe o produto" required />
+        </div>
+        <div class="field-group">
+          <label for="inventoryEditQuantity">Quantidade</label>
+          <input id="inventoryEditQuantity" name="quantity" type="number" min="0" step="1" placeholder="0" required />
+        </div>
+        <div class="field-group">
+          <label for="inventoryEditPrice">Preço</label>
+          <input id="inventoryEditPrice" name="price" type="text" inputmode="decimal" placeholder="0,00"
+            autocomplete="off" required />
+        </div>
+        <div class="field-group">
+          <label for="inventoryEditUnit">Unidade</label>
+          <select id="inventoryEditUnit" name="unit" required>
+            <option value="">Selecione</option>
+            <option value="Sabiaguaba">Sabiaguaba</option>
+            <option value="Icaraí">Icaraí</option>
+          </select>
+        </div>
+
+        <div class="form-actions full-width modal-actions">
+          <button type="button" id="cancelInventoryEditBtn" class="secondary-button">
+            <i data-lucide="x"></i>
+            <span>Cancelar</span>
+          </button>
+          <button type="submit" class="primary-button">
+            <i data-lucide="check"></i>
+            <span>Salvar alterações</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
 
   <!-- MODAL DE LOGIN -->
   <div id="loginModal" class="modal-overlay login-overlay active" aria-hidden="false">

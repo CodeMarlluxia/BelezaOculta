@@ -8,7 +8,7 @@ const SHEETS = {
 };
 
 const STAFF_OPTIONS = ['Elane', 'Edila', 'Tété', 'Biatriz', 'Eduarda', 'Juliana'];
-const LOW_STOCK_THRESHOLD = 2;
+const LOW_STOCK_THRESHOLD = 1;
 const THEME_STORAGE_KEY = 'beleza_manager_theme';
 
 const state = {
@@ -17,18 +17,17 @@ const state = {
   inventory: [],
   clients: [],
   selectedAppointmentRow: null,
+  selectedInventoryRow: null,
   currentUser: null,   // { usuario, nivel, unidade }
-  activeUnitFilter: null,  // null = todas; 'Sabiaguaba' | 'Icaraí' = filtrado
-  appointmentFilterDate: null,   // string 'YYYY-MM-DD' ou null
-  appointmentFilterUnit: null    // string ou null
+  activeUnitFilter: null  // null = todas; 'Sabiaguaba' | 'Icaraí' = filtrado
 };
 
 // Access level map: which sections each level can see
 // Levels expected in spreadsheet: 'admin', 'gerente', 'colaboradora'
 const ACCESS_MAP = {
-  admin: ['dashboard', 'agendamentos', 'vendas', 'estoque', 'cadastros'],
-  gerente: ['dashboard', 'agendamentos', 'vendas', 'estoque', 'cadastros'],
-  colaboradora: ['dashboard-colab', 'agendamentos', 'vendas', 'estoque', 'cadastros']
+  admin: ['dashboard', 'agendamentos', 'vendas', 'estoque', 'relatorios', 'cadastros'],
+  gerente: ['dashboard', 'agendamentos', 'vendas', 'estoque', 'relatorios', 'cadastros'],
+  colaboradora: ['dashboard-colab', 'agendamentos', 'vendas', 'estoque', 'relatorios', 'cadastros']
 };
 
 // Levels that see ALL units (no unit filter)
@@ -74,9 +73,11 @@ const refreshDashboardBtn = document.getElementById('refreshDashboardBtn');
 
 const appointmentModal = document.getElementById('appointmentModal');
 const appointmentDetailsModal = document.getElementById('appointmentDetailsModal');
+const inventoryEditModal = document.getElementById('inventoryEditModal');
 const appointmentForm = document.getElementById('appointmentForm');
 const salesForm = document.getElementById('salesForm');
 const inventoryForm = document.getElementById('inventoryForm');
+const inventoryEditForm = document.getElementById('inventoryEditForm');
 const clientsForm = document.getElementById('clientsForm');
 
 const closeAppointmentModalBtn = document.getElementById('closeAppointmentModalBtn');
@@ -84,7 +85,8 @@ const cancelAppointmentBtn = document.getElementById('cancelAppointmentBtn');
 const closeAppointmentDetailsModalBtn = document.getElementById('closeAppointmentDetailsModalBtn');
 const closeAppointmentDetailsBtn = document.getElementById('closeAppointmentDetailsBtn');
 const completeAppointmentBtn = document.getElementById('completeAppointmentBtn');
-const deleteAppointmentBtn = document.getElementById('deleteAppointmentBtn');
+const closeInventoryEditModalBtn = document.getElementById('closeInventoryEditModalBtn');
+const cancelInventoryEditBtn = document.getElementById('cancelInventoryEditBtn');
 
 const appointmentProfessional = document.getElementById('appointmentProfessional');
 const saleSeller = document.getElementById('saleSeller');
@@ -93,6 +95,10 @@ const saleProductsList = document.getElementById('saleProductsList');
 const salePriceInput = document.getElementById('salePrice');
 const saleQuantityInput = document.getElementById('saleQuantity');
 const inventoryPriceInput = document.getElementById('inventoryPrice');
+const inventoryEditProductInput = document.getElementById('inventoryEditProduct');
+const inventoryEditQuantityInput = document.getElementById('inventoryEditQuantity');
+const inventoryEditPriceInput = document.getElementById('inventoryEditPrice');
+const inventoryEditUnitInput = document.getElementById('inventoryEditUnit');
 const appointmentValueInput = document.getElementById('appointmentValue');
 const clientPhoneInput = document.getElementById('clientPhone');
 
@@ -125,6 +131,13 @@ const salesCount = document.getElementById('salesCount');
 const inventoryCount = document.getElementById('inventoryCount');
 const clientsCount = document.getElementById('clientsCount');
 const lowStockCount = document.getElementById('lowStockCount');
+const reportsCount = document.getElementById('reportsCount');
+
+const reportsTableBody = document.getElementById('reportsTableBody');
+const reportsEmptyState = document.getElementById('reportsEmptyState');
+const reportRevenue7Days = document.getElementById('reportRevenue7Days');
+const reportAppointments7Days = document.getElementById('reportAppointments7Days');
+const reportServicesCount7Days = document.getElementById('reportServicesCount7Days');
 
 const dashboardTodayLabel = document.getElementById('dashboardTodayLabel');
 const kpiAppointmentsDone = document.getElementById('kpiAppointmentsDone');
@@ -317,6 +330,26 @@ function getToday() {
   return new Date(now.getFullYear(), now.getMonth(), now.getDate());
 }
 
+function addDays(baseDate, days) {
+  const date = new Date(baseDate);
+  date.setDate(date.getDate() + days);
+  return date;
+}
+
+function getDateRangeForLastDays(days = 7) {
+  const end = getToday();
+  end.setHours(23, 59, 59, 999);
+  const start = getToday();
+  start.setDate(start.getDate() - (Math.max(days, 1) - 1));
+  start.setHours(0, 0, 0, 0);
+  return { start, end };
+}
+
+function isDateWithinRange(date, start, end) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return false;
+  return date.getTime() >= start.getTime() && date.getTime() <= end.getTime();
+}
+
 function formatStatus(status) {
   const current = normalizeText(status).toLowerCase();
   if (!current) return 'Em aguardo';
@@ -498,28 +531,7 @@ function renderTableRows(items, tableBody, emptyState, rowTemplate) {
 }
 
 function renderAppointments() {
-  let filtered = filterByUnit(state.appointments);
-
-  // Filtro de data local da seção
-  if (state.appointmentFilterDate) {
-    filtered = filtered.filter((item) => {
-      const date = parseDate(item.dateTime);
-      if (!date) return false;
-      const yyyy = date.getFullYear();
-      const mm = String(date.getMonth() + 1).padStart(2, '0');
-      const dd = String(date.getDate()).padStart(2, '0');
-      return `${yyyy}-${mm}-${dd}` === state.appointmentFilterDate;
-    });
-  }
-
-  // Filtro de unidade local da seção (independente do filtro global)
-  if (state.appointmentFilterUnit) {
-    const unitLower = state.appointmentFilterUnit.toLowerCase();
-    filtered = filtered.filter((item) =>
-      String(item.unit || '').trim().toLowerCase() === unitLower
-    );
-  }
-
+  const filtered = filterByUnit(state.appointments);
   const sorted = [...filtered].sort((a, b) => (parseDate(b.dateTime)?.getTime() || 0) - (parseDate(a.dateTime)?.getTime() || 0));
   renderTableRows(sorted, appointmentsTableBody, appointmentsEmptyState, (item) => {
     const isCompleted = isCompletedStatus(item.status);
@@ -566,6 +578,22 @@ function renderInventory() {
     <td>${item.quantity}</td>
     <td>${formatCurrency(item.price)}</td>
     <td>${item.unit || '-'}</td>
+    <td>
+      <div class="table-actions">
+        <button
+          type="button"
+          class="table-action-button"
+          data-action="edit-inventory"
+          data-row="${item.rowNumber}"
+        >Editar</button>
+        <button
+          type="button"
+          class="table-action-button danger"
+          data-action="delete-inventory"
+          data-row="${item.rowNumber}"
+        >Excluir</button>
+      </div>
+    </td>
   `);
   updateCount(inventoryCount, filtered.length);
 }
@@ -588,24 +616,31 @@ function getLowStockProducts() {
     .sort((a, b) => a.quantity - b.quantity || a.product.localeCompare(b.product, 'pt-BR'));
 }
 
-function renderLowStockTable() {
+function getLatestLowStockProduct() {
   const lowStockItems = getLowStockProducts();
+  if (!lowStockItems.length) return null;
+
+  return [...lowStockItems].sort((a, b) => {
+    const dateA = parseDate(a.createdAt)?.getTime() || 0;
+    const dateB = parseDate(b.createdAt)?.getTime() || 0;
+    return dateB - dateA || b.rowNumber - a.rowNumber;
+  })[0];
+}
+
+function renderLowStockTable() {
+  const latestLowStockItem = getLatestLowStockProduct();
   lowStockTableBody.innerHTML = '';
-  if (!lowStockItems.length) {
+  if (!latestLowStockItem) {
     lowStockEmptyState.style.display = 'block';
     lowStockCount.textContent = '0 itens';
     return;
   }
 
   lowStockEmptyState.style.display = 'none';
-  const fragment = document.createDocumentFragment();
-  lowStockItems.forEach((item) => {
-    const row = document.createElement('tr');
-    row.innerHTML = `<td>${item.product}</td><td>${item.quantity}</td>`;
-    fragment.appendChild(row);
-  });
-  lowStockTableBody.appendChild(fragment);
-  lowStockCount.textContent = `${lowStockItems.length} ${lowStockItems.length === 1 ? 'item' : 'itens'}`;
+  const row = document.createElement('tr');
+  row.innerHTML = `<td>${latestLowStockItem.product}</td><td>${latestLowStockItem.quantity}</td>`;
+  lowStockTableBody.appendChild(row);
+  lowStockCount.textContent = '1 item';
 }
 
 function getTodayAppointments(statusFilter = null) {
@@ -720,6 +755,86 @@ function getWeeklyRevenueSeries() {
   }
 
   return { labels, values };
+}
+
+function getAppointmentsWithRevenueLastDays(days = 7) {
+  const { start, end } = getDateRangeForLastDays(days);
+
+  return filterByUnit(state.appointments).filter((item) => {
+    const appointmentDate = parseDate(item.dateTime || item.createdAt);
+    const serviceName = normalizeText(item.service);
+    return (
+      isCompletedStatus(item.status) &&
+      normalizeNumber(item.value) > 0 &&
+      !!serviceName &&
+      isDateWithinRange(appointmentDate, start, end)
+    );
+  });
+}
+
+function getServicesRevenueReport(days = 7) {
+  const reportMap = new Map();
+
+  getAppointmentsWithRevenueLastDays(days).forEach((item) => {
+    const service = normalizeText(item.service);
+    const unit = normalizeText(item.unit) || '—';
+    const revenue = normalizeNumber(item.value);
+    const appointmentDate = parseDate(item.dateTime || item.createdAt);
+    const key = `${service.toLocaleLowerCase('pt-BR')}__${unit.toLocaleLowerCase('pt-BR')}`;
+
+    if (!reportMap.has(key)) {
+      reportMap.set(key, {
+        service,
+        unit,
+        appointments: 0,
+        revenue: 0,
+        lastAttendance: appointmentDate
+      });
+    }
+
+    const current = reportMap.get(key);
+    current.appointments += 1;
+    current.revenue += revenue;
+
+    if (appointmentDate && (!current.lastAttendance || appointmentDate.getTime() > current.lastAttendance.getTime())) {
+      current.lastAttendance = appointmentDate;
+    }
+  });
+
+  return [...reportMap.values()]
+    .map((item) => ({
+      ...item,
+      averageTicket: item.appointments ? item.revenue / item.appointments : 0
+    }))
+    .sort((a, b) =>
+      b.revenue - a.revenue ||
+      b.appointments - a.appointments ||
+      a.service.localeCompare(b.service, 'pt-BR')
+    );
+}
+
+function renderReports() {
+  if (!reportsTableBody || !reportsEmptyState) return;
+
+  const reportRows = getServicesRevenueReport(7);
+  const totalRevenue = reportRows.reduce((sum, item) => sum + item.revenue, 0);
+  const totalAppointments = reportRows.reduce((sum, item) => sum + item.appointments, 0);
+  const uniqueServices = new Set(reportRows.map((item) => item.service.toLocaleLowerCase('pt-BR'))).size;
+
+  if (reportRevenue7Days) reportRevenue7Days.textContent = formatCurrency(totalRevenue);
+  if (reportAppointments7Days) reportAppointments7Days.textContent = String(totalAppointments);
+  if (reportServicesCount7Days) reportServicesCount7Days.textContent = String(uniqueServices);
+
+  updateCount(reportsCount, reportRows.length, 'serviço', 'serviços');
+
+  renderTableRows(reportRows, reportsTableBody, reportsEmptyState, (item) => `
+    <td>${item.service || '-'}</td>
+    <td>${item.unit || '-'}</td>
+    <td>${item.appointments}</td>
+    <td>${formatCurrency(item.revenue)}</td>
+    <td>${formatCurrency(item.averageTicket)}</td>
+    <td>${formatDateTime(item.lastAttendance)}</td>
+  `);
 }
 
 function renderWeeklyChart() {
@@ -852,6 +967,7 @@ function renderAll() {
   if (section === 'agendamentos') renderAppointments();
   else if (section === 'vendas') { renderSales(); populateProductsDatalist(); }
   else if (section === 'estoque') renderInventory();
+  else if (section === 'relatorios') renderReports();
   else if (section === 'cadastros') renderClients();
 }
 
@@ -859,6 +975,7 @@ function renderAllSections() {
   renderAppointments();
   renderSales();
   renderInventory();
+  renderReports();
   renderClients();
   renderDashboard();
   renderColabDashboard();
@@ -916,6 +1033,29 @@ function closeAppointmentDetailsModal() {
   setModalVisibility(appointmentDetailsModal, false);
 }
 
+function openInventoryEditModal(rowNumber) {
+  const inventoryItem = state.inventory.find((item) => item.rowNumber === Number(rowNumber));
+  if (!inventoryItem) {
+    setFeedback('Item de estoque não encontrado.', 'error');
+    return;
+  }
+
+  state.selectedInventoryRow = inventoryItem.rowNumber;
+  if (inventoryEditProductInput) inventoryEditProductInput.value = inventoryItem.product || '';
+  if (inventoryEditQuantityInput) inventoryEditQuantityInput.value = String(inventoryItem.quantity ?? 0);
+  if (inventoryEditPriceInput) inventoryEditPriceInput.value = normalizeNumber(inventoryItem.price).toFixed(2).replace('.', ',');
+  if (inventoryEditUnitInput) inventoryEditUnitInput.value = inventoryItem.unit || '';
+
+  setModalVisibility(inventoryEditModal, true);
+  window.setTimeout(() => inventoryEditProductInput?.focus(), 80);
+}
+
+function closeInventoryEditModal() {
+  state.selectedInventoryRow = null;
+  inventoryEditForm?.reset();
+  setModalVisibility(inventoryEditModal, false);
+}
+
 function switchSection(sectionId) {
   sections.forEach((section) => {
     section.classList.toggle('active', section.id === sectionId);
@@ -934,6 +1074,7 @@ function switchSection(sectionId) {
     if (sectionId === 'agendamentos') renderAppointments();
     else if (sectionId === 'vendas') { renderSales(); populateProductsDatalist(); }
     else if (sectionId === 'estoque') renderInventory();
+    else if (sectionId === 'relatorios') renderReports();
     else if (sectionId === 'cadastros') renderClients();
     else if (sectionId === 'dashboard') renderDashboard();
     else if (sectionId === 'dashboard-colab') renderColabDashboard();
@@ -945,7 +1086,11 @@ function lockSubmitButton(form, isLoading, loadingLabel = 'Salvando...') {
   if (!submitButton) return;
   submitButton.disabled = isLoading;
   const label = submitButton.querySelector('span');
-  if (label) label.textContent = isLoading ? loadingLabel : 'Confirmar';
+  if (!label) return;
+  if (!label.dataset.defaultLabel) {
+    label.dataset.defaultLabel = label.textContent.trim() || 'Confirmar';
+  }
+  label.textContent = isLoading ? loadingLabel : label.dataset.defaultLabel;
 }
 
 function flashButtonSuccess(form) {
@@ -1039,6 +1184,23 @@ async function createRecord(sheetName, payload) {
   });
 }
 
+async function updateInventoryRecord(rowNumber, payload) {
+  return requestAPI('POST', {
+    action: 'updateInventory',
+    sheet: SHEETS.ESTOQUE,
+    rowNumber,
+    data: payload
+  });
+}
+
+async function deleteInventoryRecord(rowNumber) {
+  return requestAPI('POST', {
+    action: 'deleteInventory',
+    sheet: SHEETS.ESTOQUE,
+    rowNumber
+  });
+}
+
 async function registerSale(payload) {
   return requestAPI('POST', {
     action: 'registerSale',
@@ -1086,9 +1248,14 @@ async function handleRefreshData(showFeedback = true) {
 function renderLoadingState() {
   appointmentsTableBody.innerHTML = '<tr><td colspan="8" class="loading-state">Carregando dados...</td></tr>';
   salesTableBody.innerHTML = '<tr><td colspan="6" class="loading-state">Carregando dados...</td></tr>';
-  inventoryTableBody.innerHTML = '<tr><td colspan="4" class="loading-state">Carregando dados...</td></tr>';
+  inventoryTableBody.innerHTML = '<tr><td colspan="5" class="loading-state">Carregando dados...</td></tr>';
+  if (reportsTableBody) reportsTableBody.innerHTML = '<tr><td colspan="6" class="loading-state">Carregando dados...</td></tr>';
   clientsTableBody.innerHTML = '<tr><td colspan="4" class="loading-state">Carregando dados...</td></tr>';
   lowStockTableBody.innerHTML = '<tr><td colspan="2" class="loading-state">Carregando produtos...</td></tr>';
+  if (reportRevenue7Days) reportRevenue7Days.textContent = 'R$ 0,00';
+  if (reportAppointments7Days) reportAppointments7Days.textContent = '0';
+  if (reportServicesCount7Days) reportServicesCount7Days.textContent = '0';
+  if (reportsCount) reportsCount.textContent = '0 serviços';
 }
 
 function setupStaffSelects() {
@@ -1109,12 +1276,18 @@ closeAppointmentModalBtn?.addEventListener('click', closeAppointmentModal);
 cancelAppointmentBtn?.addEventListener('click', closeAppointmentModal);
 closeAppointmentDetailsModalBtn?.addEventListener('click', closeAppointmentDetailsModal);
 closeAppointmentDetailsBtn?.addEventListener('click', closeAppointmentDetailsModal);
+closeInventoryEditModalBtn?.addEventListener('click', closeInventoryEditModal);
+cancelInventoryEditBtn?.addEventListener('click', closeInventoryEditModal);
 refreshDashboardBtn?.addEventListener('click', () => handleRefreshData(true));
 themeToggleBtn?.addEventListener('click', toggleTheme);
 
-[appointmentModal, appointmentDetailsModal].forEach((modal) => {
+[appointmentModal, appointmentDetailsModal, inventoryEditModal].forEach((modal) => {
   modal?.addEventListener('click', (event) => {
     if (event.target === modal) {
+      if (modal === inventoryEditModal) {
+        closeInventoryEditModal();
+        return;
+      }
       setModalVisibility(modal, false);
     }
   });
@@ -1122,7 +1295,8 @@ themeToggleBtn?.addEventListener('click', toggleTheme);
 
 document.addEventListener('keydown', (event) => {
   if (event.key !== 'Escape') return;
-  if (appointmentDetailsModal?.classList.contains('active')) closeAppointmentDetailsModal();
+  if (inventoryEditModal?.classList.contains('active')) closeInventoryEditModal();
+  else if (appointmentDetailsModal?.classList.contains('active')) closeAppointmentDetailsModal();
   else if (appointmentModal?.classList.contains('active')) closeAppointmentModal();
 });
 
@@ -1130,7 +1304,7 @@ clientPhoneInput?.addEventListener('input', (event) => {
   event.target.value = formatPhone(event.target.value);
 });
 
-[salePriceInput, inventoryPriceInput, appointmentValueInput].forEach((input) => {
+[salePriceInput, inventoryPriceInput, inventoryEditPriceInput, appointmentValueInput].forEach((input) => {
   input?.addEventListener('blur', formatCurrencyInput);
 });
 
@@ -1153,6 +1327,40 @@ appointmentsTableBody?.addEventListener('click', (event) => {
   const button = event.target.closest('[data-action="open-appointment-details"]');
   if (!button) return;
   openAppointmentDetails(button.dataset.row);
+});
+
+inventoryTableBody?.addEventListener('click', async (event) => {
+  const editButton = event.target.closest('[data-action="edit-inventory"]');
+  if (editButton) {
+    openInventoryEditModal(editButton.dataset.row);
+    return;
+  }
+
+  const deleteButton = event.target.closest('[data-action="delete-inventory"]');
+  if (!deleteButton) return;
+
+  const rowNumber = Number(deleteButton.dataset.row || 0);
+  const inventoryItem = state.inventory.find((item) => item.rowNumber === rowNumber);
+  if (!inventoryItem) {
+    setFeedback('Item de estoque não encontrado.', 'error');
+    return;
+  }
+
+  const confirmed = window.confirm(`Deseja excluir o item "${inventoryItem.product}" do estoque?`);
+  if (!confirmed) return;
+
+  try {
+    await deleteInventoryRecord(rowNumber);
+    if (state.selectedInventoryRow === rowNumber) {
+      closeInventoryEditModal();
+    }
+    await loadAllData();
+    populateProductsDatalist();
+    renderAllSections();
+    setFeedback('Item de estoque excluído com sucesso.', 'success');
+  } catch (error) {
+    setFeedback(error.message, 'error');
+  }
 });
 
 completeAppointmentBtn?.addEventListener('click', async () => {
@@ -1179,43 +1387,6 @@ completeAppointmentBtn?.addEventListener('click', async () => {
     const label = completeAppointmentBtn.querySelector('span');
     if (label) label.textContent = originalLabel;
     completeAppointmentBtn.disabled = false;
-  }
-});
-
-deleteAppointmentBtn?.addEventListener('click', async () => {
-  const rowNumber = Number(state.selectedAppointmentRow || 0);
-  if (!rowNumber) {
-    setFeedback('Não foi possível identificar o agendamento selecionado.', 'error');
-    return;
-  }
-
-  if (!window.confirm('Tem certeza que deseja excluir este agendamento? Esta ação não pode ser desfeita.')) {
-    return;
-  }
-
-  const originalLabel = deleteAppointmentBtn.querySelector('span')?.textContent || 'Excluir';
-
-  try {
-    deleteAppointmentBtn.disabled = true;
-    const label = deleteAppointmentBtn.querySelector('span');
-    if (label) label.textContent = 'Excluindo...';
-
-    await requestAPI('POST', {
-      action: 'deleteRow',
-      sheet: SHEETS.AGENDAMENTOS,
-      rowNumber
-    });
-
-    state.appointments = state.appointments.filter((item) => item.rowNumber !== rowNumber);
-    renderAll();
-    closeAppointmentDetailsModal();
-    setFeedback('Agendamento excluído com sucesso.', 'success');
-  } catch (error) {
-    setFeedback(error.message, 'error');
-  } finally {
-    const label = deleteAppointmentBtn.querySelector('span');
-    if (label) label.textContent = originalLabel;
-    deleteAppointmentBtn.disabled = false;
   }
 });
 
@@ -1335,6 +1506,41 @@ inventoryForm?.addEventListener('submit', async (event) => {
   }
 });
 
+inventoryEditForm?.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  if (!inventoryEditForm.reportValidity()) return;
+
+  const rowNumber = Number(state.selectedInventoryRow || 0);
+  if (!rowNumber) {
+    setFeedback('Não foi possível identificar o item selecionado para edição.', 'error');
+    return;
+  }
+
+  lockSubmitButton(inventoryEditForm, true, 'Salvando...');
+  const payload = buildInventoryPayload(new FormData(inventoryEditForm));
+
+  try {
+    await updateInventoryRecord(rowNumber, payload);
+
+    const inventoryItem = state.inventory.find((item) => item.rowNumber === rowNumber);
+    if (inventoryItem) {
+      inventoryItem.product = payload.PRODUTO;
+      inventoryItem.quantity = payload.QUANTIDADE;
+      inventoryItem.price = payload['PREÇO'];
+      inventoryItem.unit = payload.UNIDADE;
+    }
+
+    populateProductsDatalist();
+    renderAll();
+    closeInventoryEditModal();
+    setFeedback('Item de estoque atualizado com sucesso.', 'success');
+  } catch (error) {
+    setFeedback(error.message, 'error');
+  } finally {
+    lockSubmitButton(inventoryEditForm, false, 'Salvando...');
+  }
+});
+
 clientsForm?.addEventListener('submit', async (event) => {
   event.preventDefault();
   if (!clientsForm.reportValidity()) return;
@@ -1403,33 +1609,6 @@ function showUnitFilterForAdmins() {
   const nivel = String(state.currentUser?.nivel || '').toLowerCase().trim();
   unitFilterBtn.style.display = UNRESTRICTED_LEVELS.includes(nivel) ? '' : 'none';
 }
-
-// ─── FILTROS DE DATA/UNIDADE — SEÇÃO AGENDAMENTOS ───────────────────────────
-
-const appointmentFilterDate = document.getElementById('appointmentFilterDate');
-const appointmentFilterUnit = document.getElementById('appointmentFilterUnit');
-const clearAppointmentFiltersBtn = document.getElementById('clearAppointmentFiltersBtn');
-
-appointmentFilterDate?.addEventListener('change', () => {
-  state.appointmentFilterDate = appointmentFilterDate.value || null;
-  renderAppointments();
-});
-
-appointmentFilterUnit?.addEventListener('change', () => {
-  state.appointmentFilterUnit = appointmentFilterUnit.value || null;
-  renderAppointments();
-});
-
-clearAppointmentFiltersBtn?.addEventListener('click', () => {
-  state.appointmentFilterDate = null;
-  state.appointmentFilterUnit = null;
-  if (appointmentFilterDate) appointmentFilterDate.value = '';
-  if (appointmentFilterUnit) appointmentFilterUnit.value = '';
-  renderAppointments();
-  setFeedback('Filtros removidos.', 'success');
-});
-
-// ────────────────────────────────────────────────────────────────────────────
 
 // ────────────────────────────────────────────────────────────────────────────
 
@@ -1723,24 +1902,20 @@ function renderColabLowStockTable() {
   const colabLowStockCount = document.getElementById('colabLowStockCount');
   if (!colabLowStockTableBody) return;
 
-  const lowStockItems = getLowStockProducts();
+  const latestLowStockItem = getLatestLowStockProduct();
   colabLowStockTableBody.innerHTML = '';
 
-  if (!lowStockItems.length) {
+  if (!latestLowStockItem) {
     colabLowStockEmptyState.style.display = 'block';
     colabLowStockCount.textContent = '0 itens';
     return;
   }
 
   colabLowStockEmptyState.style.display = 'none';
-  const fragment = document.createDocumentFragment();
-  lowStockItems.forEach((item) => {
-    const row = document.createElement('tr');
-    row.innerHTML = `<td>${item.product}</td><td>${item.quantity}</td>`;
-    fragment.appendChild(row);
-  });
-  colabLowStockTableBody.appendChild(fragment);
-  colabLowStockCount.textContent = `${lowStockItems.length} ${lowStockItems.length === 1 ? 'item' : 'itens'}`;
+  const row = document.createElement('tr');
+  row.innerHTML = `<td>${latestLowStockItem.product}</td><td>${latestLowStockItem.quantity}</td>`;
+  colabLowStockTableBody.appendChild(row);
+  colabLowStockCount.textContent = '1 item';
 }
 
 // Cache collab dashboard DOM refs once

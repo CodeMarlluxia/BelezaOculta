@@ -1,0 +1,421 @@
+/* ─── Layout ─────────────────────────────────────────────── */
+.app-shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 268px 1fr;
+  /* Never expand past viewport width */
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+/* ─── Sidebar ─────────────────────────────────────────────── */
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 28px 18px;
+  border-right: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface-solid) 82%, transparent);
+  backdrop-filter: blur(20px);
+}
+
+.sidebar-top {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.brand-block {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  margin-bottom: 16px;
+  padding: 4px 2px;
+}
+
+.brand-icon {
+  width: 50px;
+  height: 50px;
+  border-radius: 15px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(145deg,
+      color-mix(in srgb, var(--accent-soft) 68%, #fff 32%),
+      color-mix(in srgb, var(--surface-solid) 80%, transparent));
+  box-shadow: var(--shadow-soft);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.brand-icon img {
+  width: 40px;
+  height: 40px;
+  opacity: 1;
+  filter: none;
+  object-fit: contain;
+}
+
+.brand-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 400;
+  line-height: 1.2;
+  letter-spacing: 0.01em;
+}
+
+.brand-subtitle {
+  margin: 3px 0 0;
+  font-size: 0.82rem;
+  font-weight: 400;
+  letter-spacing: 0.03em;
+  color: var(--text-soft);
+}
+
+.sidebar-nav,
+.sidebar-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.nav-button,
+.theme-toggle-button {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 13px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  text-align: left;
+  background: transparent;
+  color: var(--text-soft);
+  font-size: 0.90rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  border: 1px solid transparent;
+  transition:
+    transform 200ms var(--ease),
+    background 200ms var(--ease),
+    color 200ms var(--ease),
+    box-shadow 200ms var(--ease),
+    border-color 200ms var(--ease);
+}
+
+.nav-button:hover,
+.theme-toggle-button:hover {
+  transform: translateX(2px);
+  background: color-mix(in srgb, var(--surface-solid) 86%, transparent);
+  color: var(--text);
+  border-color: var(--border);
+}
+
+.nav-button.active {
+  color: var(--accent-deep);
+  font-weight: 600;
+  background: linear-gradient(135deg,
+      color-mix(in srgb, var(--accent-soft) 82%, transparent),
+      color-mix(in srgb, var(--surface-solid) 90%, transparent));
+  border-color: color-mix(in srgb, var(--accent) 22%, var(--border));
+  box-shadow: 0 6px 14px rgba(181, 131, 141, 0.11);
+}
+
+.theme-toggle-button {
+  background: color-mix(in srgb, var(--surface-solid) 60%, transparent);
+  border-color: var(--border);
+  font-size: 0.85rem;
+}
+
+.nav-icon {
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+
+/* ─── Conteúdo Principal ─────────────────────────────────── */
+.content {
+  padding: 32px 36px;
+}
+
+/* ─── Cabeçalho da Página ────────────────────────────────── */
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+  padding-bottom: 22px;
+  border-bottom: 1px solid var(--border);
+}
+
+.eyebrow {
+  margin: 0 0 5px;
+  font-size: 0.70rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--accent-deep);
+  opacity: 0.75;
+}
+
+.page-header h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 400;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* ─── Meta da Seção (tag + data) ─────────────────────────── */
+.section-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.section-meta-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* ─── Tags de seção e labels ─────────────────────────────── */
+.section-tag,
+.muted-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  font-size: 0.70rem;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.muted-label {
+  display: block;
+  margin-bottom: 4px;
+}
+
+/* ─── Cards (superfície) ─────────────────────────────────── */
+.card-surface,
+.form-card,
+.table-card,
+.chart-card,
+.summary-card,
+.modal-card,
+.dashboard-date-card {
+  background: var(--surface);
+  backdrop-filter: blur(20px);
+  border: 1px solid color-mix(in srgb, var(--border-strong) 60%, transparent);
+  box-shadow: var(--shadow);
+  border-radius: var(--radius-xl);
+  transition:
+    background 280ms var(--ease),
+    border-color 280ms var(--ease),
+    box-shadow 280ms var(--ease),
+    transform 200ms var(--ease);
+}
+
+.card-surface:hover,
+.form-card:hover,
+.table-card:hover,
+.chart-card:hover,
+.summary-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 40px rgba(109, 104, 117, 0.13);
+}
+
+.compact-card {
+  padding: 16px 20px;
+}
+
+.dashboard-date-card {
+  min-width: 190px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dashboard-date-card strong {
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* ─── KPI Grid ───────────────────────────────────────────── */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.kpi-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 15px;
+}
+
+.kpi-body {
+  display: flex;
+  flex-direction: column;
+}
+
+.kpi-icon {
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--accent-soft) 70%, var(--surface-solid));
+  color: var(--accent-deep);
+  flex-shrink: 0;
+}
+
+.kpi-label,
+.summary-label {
+  display: block;
+  font-size: 0.70rem;
+  font-weight: 600;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.kpi-card strong,
+.summary-box strong {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 1.55rem;
+  line-height: 1.1;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+
+.kpi-card p,
+.summary-box p {
+  margin: 6px 0 0;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--text-soft);
+  font-weight: 400;
+}
+
+.alert-card.is-critical {
+  border-color: color-mix(in srgb, var(--warning) 50%, var(--border));
+}
+
+/* ─── Dashboard Grid ─────────────────────────────────────── */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: minmax(400px, 1.15fr) minmax(280px, 0.85fr);
+  gap: 16px;
+  margin-top: 16px;
+}
+
+/* Coluna direita: Resumo do Dia + Estoque Baixo empilhados */
+.dashboard-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.dashboard-grid-single {
+  grid-template-columns: 1fr;
+}
+
+.summary-card,
+.chart-card,
+.table-card {
+  padding: 20px 22px;
+}
+
+/* Cards compactos dentro da stack */
+.dashboard-stack .summary-card,
+.dashboard-stack .table-card {
+  padding: 16px 18px;
+}
+
+.dashboard-stack .summary-split {
+  margin-top: 10px;
+  gap: 10px;
+}
+
+.dashboard-stack .summary-box {
+  padding: 12px 14px;
+}
+
+.dashboard-stack .table-wrapper {
+  margin-top: 10px;
+}
+
+.dashboard-stack .table-wrapper th,
+.dashboard-stack .table-wrapper td {
+  padding: 10px 14px;
+}
+
+.summary-split {
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.summary-box {
+  flex: 1;
+  padding: 16px 18px;
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--surface-solid) 74%, transparent);
+  border: 1px solid var(--border);
+}
+
+.chart-wrap {
+  position: relative;
+  min-height: 280px;
+  margin-top: 14px;
+}
+
+/* ─── Seções ─────────────────────────────────────────────── */
+.section {
+  display: none;
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.section.active {
+  display: block;
+  animation: sectionFade 300ms var(--ease) forwards;
+}
+
+@keyframes sectionFade {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+

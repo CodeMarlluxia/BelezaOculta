@@ -1,0 +1,148 @@
+/* ─── Feedback Banner ────────────────────────────────────── */
+/* ── Feedback banner ─────────────────────────────────────── */
+@keyframes feedbackIn {
+  0% {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.98);
+    max-height: 0;
+    margin-bottom: 0;
+  }
+
+  40% {
+    opacity: 1;
+    transform: translateY(2px) scale(1.005);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    max-height: 80px;
+    margin-bottom: 16px;
+  }
+}
+
+@keyframes feedbackOut {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    max-height: 80px;
+    margin-bottom: 16px;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.97);
+    max-height: 0;
+    margin-bottom: 0;
+  }
+}
+
+@keyframes feedbackShake {
+
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  20% {
+    transform: translateX(-6px);
+  }
+
+  40% {
+    transform: translateX(6px);
+  }
+
+  60% {
+    transform: translateX(-4px);
+  }
+
+  80% {
+    transform: translateX(4px);
+  }
+}
+
+@keyframes feedbackPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(109, 104, 117, 0.35);
+  }
+
+  60% {
+    box-shadow: 0 0 0 8px rgba(109, 104, 117, 0);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(109, 104, 117, 0);
+  }
+}
+
+@keyframes feedbackPulseError {
+  0% {
+    box-shadow: 0 0 0 0 rgba(229, 152, 155, 0.35);
+  }
+
+  60% {
+    box-shadow: 0 0 0 8px rgba(229, 152, 155, 0);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(229, 152, 155, 0);
+  }
+}
+
+.feedback-banner {
+  overflow: hidden;
+  max-height: 0;
+  margin-bottom: 0;
+  opacity: 0;
+  border-radius: var(--radius-md);
+  font-size: 0.88rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.feedback-banner.success,
+.feedback-banner.error,
+.feedback-banner.warning {
+  padding: 12px 16px;
+  pointer-events: auto;
+  animation: feedbackIn 480ms var(--ease) forwards;
+}
+
+.feedback-banner.hiding {
+  animation: feedbackOut 320ms var(--ease) forwards !important;
+}
+
+.feedback-banner.success {
+  color: #4d4858;
+  background: rgba(109, 104, 117, 0.12);
+  border: 1px solid rgba(109, 104, 117, 0.28);
+  animation: feedbackIn 480ms var(--ease) forwards,
+    feedbackPulse 600ms 200ms var(--ease) forwards;
+}
+
+.feedback-banner.error {
+  color: #6d6875;
+  background: rgba(229, 152, 155, 0.14);
+  border: 1px solid rgba(229, 152, 155, 0.30);
+  animation: feedbackIn 380ms var(--ease) forwards,
+    feedbackShake 420ms 180ms var(--ease) forwards,
+    feedbackPulseError 600ms 200ms var(--ease) forwards;
+}
+
+.feedback-banner-icon {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.85;
+}
+
+.feedback-banner-text {
+  flex: 1;
+}
+

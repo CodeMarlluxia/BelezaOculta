@@ -1,0 +1,200 @@
+/* ─── Formulários ────────────────────────────────────────── */
+.form-card {
+  width: fit-content;
+  max-width: 100%;
+  padding: 20px 22px 22px;
+}
+
+.compact-form-card {
+  min-width: min(900px, 100%);
+}
+
+.form-card-title {
+  margin: 0 0 16px;
+  font-size: 0.70rem;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.grid-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(260px, 380px));
+  gap: 12px 18px;
+}
+
+.field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field-group label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text-soft);
+}
+
+.field-group input,
+.field-group select {
+  height: 48px;
+  width: 100%;
+  border-radius: var(--radius-md);
+  border: 1px solid color-mix(in srgb, var(--border) 85%, #fff);
+  background: color-mix(in srgb, var(--surface-solid) 88%, transparent);
+  color: var(--text);
+  padding: 0 14px;
+  outline: none;
+  font-size: 0.92rem;
+  transition:
+    border-color 160ms var(--ease),
+    box-shadow 160ms var(--ease),
+    background 160ms var(--ease);
+}
+
+.field-group input::placeholder {
+  color: var(--text-muted);
+}
+
+.field-group input:focus,
+.field-group select:focus {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border-strong));
+  box-shadow: 0 0 0 3px rgba(181, 131, 141, 0.14);
+}
+
+.full-width {
+  grid-column: 1 / -1;
+}
+
+/* Login submit spans full width */
+.login-submit-btn {
+  width: 100% !important;
+  justify-content: center;
+}
+
+.align-end {
+  justify-content: flex-end;
+}
+
+.space-between {
+  justify-content: space-between;
+}
+
+.form-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+/* ─── Botões ─────────────────────────────────────────────── */
+.primary-button,
+.secondary-button,
+.icon-button,
+.status-action-button,
+.table-action-button {
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: var(--radius-md);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  transition:
+    transform 180ms var(--ease),
+    background 180ms var(--ease),
+    box-shadow 180ms var(--ease),
+    border-color 180ms var(--ease),
+    opacity 180ms var(--ease),
+    color 180ms var(--ease);
+}
+
+.primary-button {
+  color: #fff;
+  background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 78%, #fff));
+  box-shadow: 0 8px 18px rgba(181, 131, 141, 0.24);
+}
+
+.secondary-button,
+.status-action-button,
+.table-action-button {
+  color: var(--text);
+  background: color-mix(in srgb, var(--surface-solid) 82%, transparent);
+  border: 1px solid var(--border);
+}
+
+.icon-button {
+  width: 42px;
+  min-width: 42px;
+  padding: 0;
+  background: color-mix(in srgb, var(--surface-solid) 82%, transparent);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.primary-button:hover,
+.secondary-button:hover,
+.icon-button:hover,
+.status-action-button:hover,
+.table-action-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgba(109, 104, 117, 0.13);
+}
+
+.primary-button:hover {
+  box-shadow: 0 12px 24px rgba(181, 131, 141, 0.32);
+}
+
+.primary-button:active,
+.secondary-button:active,
+.status-action-button:active,
+.table-action-button:active {
+  transform: translateY(1px) scale(0.985);
+  box-shadow: none !important;
+  transition-duration: 80ms;
+}
+
+@keyframes btnSuccess {
+  0% {
+    background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 78%, #fff));
+  }
+
+  20% {
+    background: linear-gradient(135deg, var(--success), color-mix(in srgb, var(--success) 80%, #fff));
+    transform: scale(1.03);
+  }
+
+  60% {
+    background: linear-gradient(135deg, var(--success), color-mix(in srgb, var(--success) 80%, #fff));
+    transform: scale(1);
+  }
+
+  100% {
+    background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 78%, #fff));
+  }
+}
+
+.primary-button.btn-success {
+  animation: btnSuccess 900ms var(--ease) forwards;
+}
+
+.primary-button:disabled,
+.secondary-button:disabled,
+.icon-button:disabled,
+.status-action-button:disabled,
+.table-action-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+

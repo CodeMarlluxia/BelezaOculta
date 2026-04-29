@@ -1,0 +1,100 @@
+/* ============================================================
+   BELEZA MANAGER — CSS Refatorado
+   Tipografia: DM Sans (corpo) + DM Serif Display (títulos)
+   Paleta atualizada e dividida por função visual.
+   ============================================================ */
+
+:root {
+  /* Paleta base
+     #ffcdb2 — fundos quentes e áreas suaves
+     #ffb4a2 — realces leves, hovers e elementos de apoio
+     #e5989b — destaques secundários e estados de atenção
+     #b5838d — ação primária, navegação ativa e elementos de marca
+     #6d6875 — textos fortes, contraste e profundidade
+  */
+  --palette-peach-soft: #ffcdb2;
+  --palette-peach: #ffb4a2;
+  --palette-rose: #e5989b;
+  --palette-mauve: #b5838d;
+  --palette-slate: #6d6875;
+
+  /* Cores */
+  --bg: #fff4ec;
+  --bg-soft: #fff9f5;
+  --surface: rgba(255, 249, 245, 0.80);
+  --surface-strong: rgba(255, 249, 245, 0.94);
+  --surface-solid: #fff7f2;
+  --accent: var(--palette-mauve);
+  --accent-soft: rgba(255, 205, 178, 0.56);
+  --accent-deep: var(--palette-slate);
+  --accent-contrast: #fff9f5;
+  --nude: var(--palette-peach);
+  --text: #453f4d;
+  --text-soft: var(--palette-slate);
+  --text-muted: rgba(109, 104, 117, 0.74);
+  --border: rgba(181, 131, 141, 0.24);
+  --border-strong: rgba(181, 131, 141, 0.38);
+  --shadow: 0 12px 32px rgba(109, 104, 117, 0.10);
+  --shadow-soft: 0 6px 16px rgba(109, 104, 117, 0.07);
+  --danger: var(--palette-rose);
+  --warning: var(--palette-peach);
+  --success: var(--palette-slate);
+  --overlay: rgba(109, 104, 117, 0.28);
+
+  /* Raios */
+  --radius-xl: 24px;
+  --radius-lg: 18px;
+  --radius-md: 14px;
+  --radius-sm: 10px;
+
+  /* Gráfico */
+  --chart-1: rgba(109, 104, 117, 0.86);
+  --chart-2: rgba(181, 131, 141, 0.86);
+  --chart-3: rgba(229, 152, 155, 0.86);
+  --chart-4: rgba(255, 180, 162, 0.86);
+  --chart-5: rgba(255, 205, 178, 0.90);
+  --chart-6: rgba(181, 131, 141, 0.72);
+  --chart-7: rgba(229, 152, 155, 0.72);
+  --chart-border: rgba(109, 104, 117, 0.28);
+  --chart-grid: rgba(181, 131, 141, 0.16);
+
+  /* Easing */
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Tipografia */
+  --font-body: 'DM Sans', system-ui, -apple-system, sans-serif;
+  --font-display: 'DM Serif Display', Georgia, serif;
+}
+
+body[data-theme="dark"] {
+  --bg: #24212a;
+  --bg-soft: #2f2a36;
+  --surface: rgba(61, 55, 70, 0.86);
+  --surface-strong: rgba(72, 64, 82, 0.94);
+  --surface-solid: #312b38;
+  --accent: var(--palette-peach);
+  --accent-soft: rgba(255, 180, 162, 0.16);
+  --accent-deep: var(--palette-peach-soft);
+  --accent-contrast: #2f2a36;
+  --nude: var(--palette-rose);
+  --text: #fff4ec;
+  --text-soft: rgba(255, 205, 178, 0.86);
+  --text-muted: rgba(255, 205, 178, 0.66);
+  --border: rgba(255, 205, 178, 0.13);
+  --border-strong: rgba(255, 205, 178, 0.24);
+  --shadow: 0 14px 36px rgba(0, 0, 0, 0.30);
+  --shadow-soft: 0 8px 20px rgba(0, 0, 0, 0.22);
+  --danger: var(--palette-rose);
+  --warning: var(--palette-peach);
+  --success: var(--palette-peach-soft);
+  --overlay: rgba(16, 14, 20, 0.58);
+  --chart-1: rgba(255, 205, 178, 0.90);
+  --chart-2: rgba(255, 180, 162, 0.88);
+  --chart-3: rgba(229, 152, 155, 0.88);
+  --chart-4: rgba(181, 131, 141, 0.88);
+  --chart-5: rgba(109, 104, 117, 0.88);
+  --chart-6: rgba(255, 180, 162, 0.70);
+  --chart-7: rgba(229, 152, 155, 0.70);
+  --chart-border: rgba(255, 205, 178, 0.18);
+  --chart-grid: rgba(255, 205, 178, 0.10);
+}

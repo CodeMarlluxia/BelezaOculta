@@ -1,0 +1,132 @@
+/* ============================================================
+   PRODUCT PICKER
+   ============================================================ */
+
+.input-with-action {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.input-with-action input {
+  flex: 1;
+  min-width: 0;
+}
+
+.input-action-btn {
+  flex-shrink: 0;
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--accent-deep);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 160ms var(--ease), color 160ms var(--ease), border-color 160ms var(--ease);
+}
+
+.input-action-btn:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent-deep);
+}
+
+.input-action-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+.product-picker-card {
+  width: min(480px, 100%);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-height: 80vh;
+}
+
+.product-picker-search input {
+  width: 100%;
+}
+
+.product-picker-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+  max-height: 380px;
+  padding-right: 4px;
+}
+
+.product-picker-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.product-picker-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.product-picker-list::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 99px;
+}
+
+.product-picker-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  cursor: pointer;
+  transition: background 140ms var(--ease), border-color 140ms var(--ease);
+  text-align: left;
+  width: 100%;
+}
+
+.product-picker-item:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.product-picker-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.product-picker-item-name {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.product-picker-item-meta {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.product-picker-item-price {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--accent-deep);
+  white-space: nowrap;
+}
+
+.product-picker-item.out-of-stock {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Disable expensive radial gradients on mobile */
+@media (max-width: 768px) {
+  body {
+    background: var(--bg);
+  }
+}

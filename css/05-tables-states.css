@@ -1,0 +1,338 @@
+/* ─── Tabelas ────────────────────────────────────────────── */
+.space-top {
+  margin-top: 16px;
+}
+
+.table-card {
+  padding: 18px 20px 20px;
+}
+
+.table-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.table-title {
+  font-size: 0.93rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+
+.table-title-with-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.table-wrapper {
+  /* CRITICAL: overflow-x:auto must be set here so min-width on table
+     creates scroll inside the wrapper, NOT viewport expansion */
+  overflow-x: auto;
+  overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  margin-top: 14px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  /* Prevent table from leaking outside page width */
+  max-width: 100%;
+}
+
+.table-wrapper table {
+  width: 100%;
+  border-collapse: collapse;
+  /* min-width keeps columns readable but scrolls INSIDE wrapper */
+  min-width: 600px;
+}
+
+.table-wrapper th,
+.table-wrapper td {
+  padding: 13px 16px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.88rem;
+}
+
+.table-wrapper th {
+  font-size: 0.70rem;
+  font-weight: 600;
+  letter-spacing: 0.13em;
+  color: var(--text-muted);
+  background: color-mix(in srgb, var(--surface-solid) 74%, transparent);
+}
+
+.table-wrapper tr:last-child td {
+  border-bottom: none;
+}
+
+.table-wrapper tr:hover td {
+  background: color-mix(in srgb, var(--accent-soft) 14%, transparent);
+  transition: background 120ms var(--ease);
+}
+
+
+.table-toolbar-with-search {
+  display: grid;
+  grid-template-columns: auto minmax(220px, 360px) auto;
+  align-items: center;
+}
+
+.table-search {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--surface-solid) 82%, transparent);
+  color: var(--text-soft);
+}
+
+.table-search input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+}
+
+.table-search input::placeholder {
+  color: var(--text-muted);
+}
+
+.report-filter-card {
+  width: fit-content;
+  max-width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+}
+
+.segmented-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--surface-solid) 82%, transparent);
+}
+
+.segment-button {
+  min-height: 34px;
+  padding: 0 13px;
+  border-radius: calc(var(--radius-md) - 4px);
+  color: var(--text-soft);
+  font-size: 0.82rem;
+  font-weight: 600;
+  transition: background 160ms var(--ease), color 160ms var(--ease), box-shadow 160ms var(--ease);
+}
+
+.segment-button:hover {
+  color: var(--text);
+  background: color-mix(in srgb, var(--accent-soft) 32%, transparent);
+}
+
+.segment-button.active {
+  color: #fff;
+  background: var(--accent);
+  box-shadow: 0 8px 16px rgba(181, 131, 141, 0.20);
+}
+
+/* ─── Status Chips & Pills ───────────────────────────────── */
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 11px;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface-solid) 72%, transparent);
+}
+
+.status-chip.done {
+  color: var(--success);
+  border-color: color-mix(in srgb, var(--success) 40%, var(--border));
+  background: color-mix(in srgb, var(--success) 8%, transparent);
+}
+
+.status-chip.pending {
+  color: var(--warning);
+  border-color: color-mix(in srgb, var(--warning) 40%, var(--border));
+  background: color-mix(in srgb, var(--warning) 8%, transparent);
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 11px;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 500;
+  color: var(--text-soft);
+  background: color-mix(in srgb, var(--surface-solid) 72%, transparent);
+  border: 1px solid var(--border);
+}
+
+.pill.warning {
+  color: var(--warning);
+}
+
+/* ─── Card: Clientes Aguardando ──────────────────────────── */
+.waiting-card {
+  padding: 18px 20px 20px;
+  margin-top: 16px;
+}
+
+.waiting-list {
+  margin-top: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.waiting-empty {
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  color: var(--text-soft);
+  font-size: 0.88rem;
+  background: color-mix(in srgb, var(--surface-solid) 72%, transparent);
+  border: 1px dashed var(--border);
+  text-align: center;
+}
+
+.waiting-item {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 13px 16px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface-solid) 72%, transparent);
+  cursor: pointer;
+  transition:
+    transform 180ms var(--ease),
+    background 180ms var(--ease),
+    border-color 180ms var(--ease),
+    box-shadow 180ms var(--ease);
+  min-width: 200px;
+  flex: 1 1 200px;
+  max-width: 300px;
+  position: relative;
+  overflow: hidden;
+}
+
+.waiting-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--accent);
+  border-radius: 3px 0 0 3px;
+  opacity: 0.6;
+}
+
+.waiting-item:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+  background: color-mix(in srgb, var(--accent-soft) 30%, var(--surface-solid));
+  box-shadow: 0 8px 20px rgba(181, 131, 141, 0.14);
+}
+
+.waiting-item:hover::before {
+  opacity: 1;
+}
+
+.waiting-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent-soft), color-mix(in srgb, var(--accent) 28%, #fff));
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--accent-deep);
+}
+
+.waiting-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.waiting-name {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.waiting-meta {
+  font-size: 0.76rem;
+  color: var(--text-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.waiting-action {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  background: color-mix(in srgb, var(--accent-soft) 55%, transparent);
+  color: var(--accent-deep);
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--border));
+  transition: background 180ms var(--ease), transform 180ms var(--ease), color 180ms var(--ease);
+}
+
+.waiting-item:hover .waiting-action {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+  transform: scale(1.1);
+}
+
+.waiting-item.is-closing {
+  opacity: 0.45;
+  pointer-events: none;
+  transform: scale(0.97);
+}
+
+
+/* ─── Empty State ────────────────────────────────────────── */
+.empty-state {
+  display: none;
+  margin-top: 12px;
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  color: var(--text-soft);
+  font-size: 0.88rem;
+  background: color-mix(in srgb, var(--surface-solid) 72%, transparent);
+  border: 1px dashed var(--border);
+  text-align: center;
+}
+

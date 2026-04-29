@@ -1,0 +1,187 @@
+/* ============================================================
+   LOGIN MODAL
+   ============================================================ */
+
+.login-overlay {
+  z-index: 9999;
+  background: var(--bg);
+  backdrop-filter: none;
+  padding: 24px 16px;
+  align-items: center;
+  justify-content: center;
+}
+
+body[data-theme="dark"] .login-overlay {
+  background: var(--bg);
+}
+
+.login-card {
+  width: min(420px, 100%);
+  padding: 40px 36px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+@media (max-width: 480px) {
+  .login-overlay {
+    padding: 16px;
+    align-items: stretch;
+    justify-content: center;
+  }
+
+  .login-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 32px 20px;
+    gap: 22px;
+    border-radius: var(--radius-xl);
+  }
+
+  .login-brand .brand-icon {
+    width: 56px;
+    height: 56px;
+  }
+
+  .login-title {
+    font-size: 1.5rem !important;
+  }
+
+  .login-subtitle {
+    font-size: 0.875rem;
+  }
+
+  .login-form .field-group input {
+    height: 48px;
+    font-size: 1rem;
+  }
+
+  .login-form .primary-button {
+    height: 50px;
+    font-size: 1rem;
+  }
+}
+
+.login-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+}
+
+.login-brand .brand-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-md);
+  background: var(--accent-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4px;
+}
+
+.login-brand .brand-icon img {
+  width: 42px;
+  height: 42px;
+  opacity: 1;
+  object-fit: contain;
+}
+
+.login-title {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  color: var(--text);
+  margin: 0;
+}
+
+.login-subtitle {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.login-form {
+  grid-template-columns: 1fr !important;
+  gap: 16px;
+}
+
+.password-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-wrapper input {
+  width: 100%;
+  padding-right: 44px;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 10px;
+  color: var(--text-muted);
+  padding: 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  transition: color 160ms var(--ease);
+}
+
+.password-toggle:hover {
+  color: var(--accent-deep);
+}
+
+.login-error {
+  font-size: 0.8125rem;
+  color: var(--danger);
+  background: rgba(229, 152, 155, 0.12);
+  border: 1px solid rgba(229, 152, 155, 0.28);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  display: none;
+}
+
+.login-error.visible {
+  display: block;
+}
+
+.full-width {
+  width: 100%;
+}
+
+
+/* Unit filter button */
+.unit-filter-button {
+  color: var(--text-soft);
+  position: relative;
+}
+
+.unit-filter-button.is-filtering {
+  color: var(--accent-deep) !important;
+  background: var(--accent-soft) !important;
+  border-color: color-mix(in srgb, var(--accent) 30%, transparent) !important;
+}
+
+.unit-filter-button.is-filtering .nav-icon {
+  opacity: 1;
+}
+
+/* Logout button */
+.logout-button {
+  color: var(--danger) !important;
+}
+
+.logout-button:hover {
+  background: rgba(229, 152, 155, 0.12) !important;
+}
+
+/* Nav buttons hidden by access level */
+.nav-button[data-access="hidden"] {
+  display: none !important;
+}
+

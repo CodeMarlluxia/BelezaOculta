@@ -10,7 +10,10 @@
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-  <title>BOH Manager</title>
+  <title>Beleza Oculta | Gestão</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/brand/favicon-32.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="assets/brand/favicon-16.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="assets/brand/apple-touch-icon.png" />
   <!-- Preconnect to reduce font latency -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -26,7 +29,7 @@
   <header class="mobile-topbar" aria-label="Cabeçalho mobile">
     <div class="mobile-brand">
       <div class="brand-icon" aria-hidden="true">
-        <img src="https://cdn.jsdelivr.net/gh/lucide-icons/lucide@main/icons/scissors.svg" alt="" />
+        <img src="assets/brand/beleza-oculta-logo.png" alt="" />
       </div>
       <span class="brand-title" id="mobileUserName">Usuária</span>
     </div>
@@ -44,7 +47,7 @@
       <div class="sidebar-top">
         <div class="brand-block">
           <div class="brand-icon" aria-hidden="true">
-            <img src="https://cdn.jsdelivr.net/gh/lucide-icons/lucide@main/icons/scissors.svg" alt="" />
+            <img src="assets/brand/beleza-oculta-logo.png" alt="" />
           </div>
           <div>
             <h1 class="brand-title" id="sidebarUserName">Usuária</h1>
@@ -481,8 +484,12 @@
         </div>
 
         <div class="table-card space-top card-surface">
-          <div class="table-toolbar">
+          <div class="table-toolbar table-toolbar-with-search">
             <span class="table-title table-title-with-icon"><i data-lucide="package"></i>Estoque</span>
+            <label class="table-search" for="inventorySearchInput">
+              <i data-lucide="search"></i>
+              <input id="inventorySearchInput" type="search" placeholder="Pesquisar produto..." autocomplete="off" />
+            </label>
             <span class="pill" id="inventoryCount">0 registros</span>
           </div>
           <div class="table-wrapper">
@@ -512,7 +519,16 @@
           </div>
           <div class="dashboard-date-card card-surface compact-card">
             <span class="muted-label">Período</span>
-            <strong>Últimos 7 dias</strong>
+            <strong id="reportPeriodLabel">Últimos 7 dias</strong>
+          </div>
+        </div>
+
+        <div class="report-filter-card card-surface compact-card" aria-label="Filtros de período dos relatórios">
+          <span class="muted-label">Filtrar relatório</span>
+          <div class="segmented-control">
+            <button class="segment-button" type="button" data-report-period="daily">Diário</button>
+            <button class="segment-button active" type="button" data-report-period="weekly">Semanal</button>
+            <button class="segment-button" type="button" data-report-period="monthly">Mensal</button>
           </div>
         </div>
 
@@ -522,7 +538,7 @@
             <div class="kpi-body">
               <span class="kpi-label">Faturamento</span>
               <strong id="reportRevenue7Days">R$ 0,00</strong>
-              <p>Serviços concluídos nos últimos 7 dias</p>
+              <p id="reportRevenueDescription">Serviços concluídos no período selecionado</p>
             </div>
           </article>
 
@@ -565,7 +581,7 @@
               <tbody id="reportsTableBody"></tbody>
             </table>
           </div>
-          <div id="reportsEmptyState" class="empty-state">Nenhum serviço com faturamento encontrado nos últimos 7 dias.</div>
+          <div id="reportsEmptyState" class="empty-state">Nenhum serviço com faturamento encontrado no período selecionado.</div>
         </div>
       </section>
 
@@ -620,6 +636,7 @@
                   <th>TELEFONE</th>
                   <th>E-MAIL</th>
                   <th>UNIDADE</th>
+                  <th>AÇÕES</th>
                 </tr>
               </thead>
               <tbody id="clientsTableBody"></tbody>
@@ -785,12 +802,61 @@
     </div>
   </div>
 
+  <!-- MODAL DE EDIÇÃO DE CLIENTE -->
+  <div id="clientEditModal" class="modal-overlay" aria-hidden="true" inert>
+    <div class="modal-card card-surface compact-modal-card">
+      <div class="modal-header">
+        <div>
+          <p class="eyebrow">Cadastros</p>
+          <h3 id="clientEditModalTitle">Editar Cliente</h3>
+        </div>
+        <button id="closeClientEditModalBtn" class="icon-button" type="button" aria-label="Fechar edição de cliente">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+
+      <form id="clientEditForm" class="grid-form" novalidate>
+        <div class="field-group">
+          <label for="clientEditName">Nome</label>
+          <input id="clientEditName" name="name" type="text" placeholder="Nome completo" required />
+        </div>
+        <div class="field-group">
+          <label for="clientEditPhone">Telefone</label>
+          <input id="clientEditPhone" name="phone" type="tel" placeholder="(00) 00000-0000" required />
+        </div>
+        <div class="field-group">
+          <label for="clientEditEmail">E-mail</label>
+          <input id="clientEditEmail" name="email" type="email" placeholder="cliente@email.com" required />
+        </div>
+        <div class="field-group">
+          <label for="clientEditUnit">Unidade</label>
+          <select id="clientEditUnit" name="unit" required>
+            <option value="">Selecione</option>
+            <option value="Sabiaguaba">Sabiaguaba</option>
+            <option value="Icaraí">Icaraí</option>
+          </select>
+        </div>
+
+        <div class="form-actions full-width modal-actions">
+          <button type="button" id="cancelClientEditBtn" class="secondary-button">
+            <i data-lucide="x"></i>
+            <span>Cancelar</span>
+          </button>
+          <button type="submit" class="primary-button">
+            <i data-lucide="check"></i>
+            <span>Salvar alterações</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- MODAL DE LOGIN -->
   <div id="loginModal" class="modal-overlay login-overlay active" aria-hidden="false">
     <div class="modal-card login-card card-surface">
       <div class="login-brand">
         <div class="brand-icon" aria-hidden="true">
-          <img src="https://cdn.jsdelivr.net/gh/lucide-icons/lucide@main/icons/scissors.svg" alt="" />
+          <img src="assets/brand/beleza-oculta-logo.png" alt="" />
         </div>
         <h1 class="login-title">Beleza Oculta</h1>
         <p class="login-subtitle">Insira suas credenciais para continuar.</p>
@@ -850,7 +916,7 @@
   <!-- lucide sync — small lib, needed immediately for icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
   <!-- app script deferred — runs after DOM + chart.js are ready -->
-  <script src="script.js" defer></script>
+  <script type="module" src="script.js"></script>
 </body>
 
 </html>
